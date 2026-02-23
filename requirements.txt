@@ -1,0 +1,5 @@
+Flask
+aiohttp
+beautifulsoup4
+reportlab
+gunicorn

@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>OWASP Web Scanner Pro</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="container">
+<h1>OWASP Web Security Scanner</h1>
+<p class="disclaimer">Authorized testing only.</p>
+{% if error %}<p class="error">{{ error }}</p>{% endif %}
+<form method="POST">
+<input type="text" name="target" placeholder="https://example.com" required>
+<button type="submit">Start Scan</button>
+</form>
+</div>
+</body>
+</html>
