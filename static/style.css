@@ -1,11 +1,193 @@
-body{background:#0f172a;color:white;font-family:Arial;}
-.container{width:70%;margin:auto;margin-top:40px;}
-input{padding:10px;width:70%;}
-button,.btn{padding:10px;background:#2563eb;color:white;border:none;text-decoration:none;}
-.card{background:#1e293b;padding:15px;margin-top:10px;border-radius:6px;}
-.High{border-left:5px solid red;}
-.Medium{border-left:5px solid orange;}
-.Low{border-left:5px solid yellow;}
-.summary{display:flex;gap:20px;margin-bottom:20px;}
-.disclaimer{color:#facc15;}
-.error{color:red;}
+:root{
+  --bg:#0f172a;
+  --card:#1e293b;
+  --card2:#0b162c;
+  --text:#ffffff;
+  --muted:#9fb0d0;
+  --blue:#2563eb;
+  --line:#24324f;
+  --danger:#ef4444;
+  --warn:#f59e0b;
+  --low:#facc15;
+  --ok:#22c55e;
+}
+
+*{box-sizing:border-box;}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family:Arial, system-ui, -apple-system, Segoe UI, Roboto;
+}
+
+a{color:inherit; text-decoration:none;}
+
+.container{
+  width:min(980px, 92%);
+  margin:auto;
+  margin-top:32px;
+  padding-bottom:40px;
+}
+
+/* Header */
+.header{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:16px;
+  margin-bottom:14px;
+}
+
+h1{margin:0 0 6px 0; font-size:28px;}
+.h2{margin:0 0 10px 0; font-size:18px;}
+
+.muted{color:var(--muted); margin:0;}
+
+/* Panels */
+.panel{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:16px;
+  margin:14px 0;
+}
+.panel.danger{
+  border-color:rgba(239,68,68,0.5);
+}
+
+/* Form */
+.form{display:flex; flex-direction:column; gap:10px;}
+.label{font-size:13px; color:var(--muted);}
+
+input, .input, select, .select{
+  padding:12px;
+  width:100%;
+  border-radius:10px;
+  border:1px solid var(--line);
+  background:var(--card2);
+  color:var(--text);
+  outline:none;
+}
+
+.row{display:flex; gap:10px;}
+.col{flex:1;}
+
+.actions{display:flex; gap:10px; margin-top:6px; flex-wrap:wrap;}
+
+/* Buttons */
+button, .btn{
+  padding:10px 12px;
+  background:var(--blue);
+  color:white;
+  border:none;
+  border-radius:10px;
+  cursor:pointer;
+  text-decoration:none;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+}
+.btn.primary{background:var(--blue);}
+.btn.disabled{opacity:0.55; pointer-events:none;}
+button:disabled{opacity:0.6; cursor:not-allowed;}
+
+/* Badge */
+.badge{
+  padding:8px 10px;
+  border-radius:999px;
+  font-weight:bold;
+  font-size:12px;
+  border:1px solid var(--line);
+  background:var(--card2);
+}
+.badge.idle{opacity:.85;}
+.badge.queued{border-color:rgba(245,158,11,0.7);}
+.badge.running{border-color:rgba(245,158,11,1);}
+.badge.completed{border-color:rgba(34,197,94,0.9);}
+.badge.failed{border-color:rgba(239,68,68,0.9);}
+
+/* Job header */
+.jobHeader{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:12px;
+}
+.jobActions{display:flex; gap:10px; flex-wrap:wrap;}
+
+/* Progress */
+.progressWrap{margin-top:12px;}
+.progressBar{
+  height:10px;
+  background:#071022;
+  border:1px solid var(--line);
+  border-radius:999px;
+  overflow:hidden;
+}
+.progressFill{
+  height:100%;
+  width:0%;
+  background:#3b82f6;
+  transition:width 250ms ease;
+}
+.progressMeta{
+  display:flex;
+  justify-content:space-between;
+  margin-top:8px;
+}
+
+/* Output */
+.output, pre{
+  background:#071022;
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:12px;
+  overflow:auto;
+  max-height:360px;
+  white-space:pre-wrap;
+}
+
+/* Your existing cards for vulnerabilities */
+.card{
+  background:var(--card);
+  padding:15px;
+  margin-top:10px;
+  border-radius:10px;
+  border:1px solid var(--line);
+}
+.High{border-left:5px solid var(--danger);}
+.Medium{border-left:5px solid var(--warn);}
+.Low{border-left:5px solid var(--low);}
+.Info{border-left:5px solid #60a5fa;}
+.Critical{border-left:5px solid #ff2d55;}
+
+/* Summary row */
+.summary{
+  display:flex;
+  gap:20px;
+  margin-bottom:20px;
+  flex-wrap:wrap;
+}
+.summary > div{
+  padding:10px 12px;
+  border:1px solid var(--line);
+  background:var(--card2);
+  border-radius:10px;
+}
+
+/* Misc */
+.disclaimer{
+  color:var(--low);
+  font-size:12px;
+  margin-top:10px;
+}
+.error{color:var(--danger);}
+.hidden{display:none;}
+
+.htmlPreview{
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:10px;
+  background:#071022;
+}

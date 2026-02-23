@@ -1,18 +1,212 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-<title>OWASP Web Scanner Pro</title>
-<link rel="stylesheet" href="/static/style.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OWASP Web Scanner Pro</title>
+  <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-<div class="container">
-<h1>OWASP Web Security Scanner</h1>
-<p class="disclaimer">Authorized testing only.</p>
-{% if error %}<p class="error">{{ error }}</p>{% endif %}
-<form method="POST">
-<input type="text" name="target" placeholder="https://example.com" required>
-<button type="submit">Start Scan</button>
-</form>
-</div>
+  <div class="container">
+    <div class="header">
+      <div>
+        <h1>OWASP Web Scanner Pro</h1>
+        <p class="muted">Private scanner • Async modules • JSON / HTML / PDF reports</p>
+      </div>
+      <span id="statusBadge" class="badge idle">Idle</span>
+    </div>
+
+    <div class="panel">
+      <form id="scanForm" class="form">
+        <label class="label">Target URL</label>
+        <input class="input" name="target" placeholder="https://example.com" required>
+
+        <div class="row">
+          <div class="col">
+            <label class="label">Output format</label>
+            <select class="select" name="output_format">
+              <option value="json">JSON</option>
+              <option value="html">HTML</option>
+              <option value="pdf">PDF</option>
+            </select>
+          </div>
+
+          <div class="col">
+            <label class="label">Profile</label>
+            <select class="select" name="profile">
+              <option value="fast">Fast</option>
+              <option value="normal" selected>Normal</option>
+              <option value="aggressive">Aggressive</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="startBtn" class="btn primary" type="submit">Start Scan</button>
+          <button id="resetBtn" class="btn" type="button">Reset</button>
+        </div>
+
+        <p class="disclaimer">
+          ⚠️ Scan only systems you own or have explicit permission to test. Non-destructive checks only.
+        </p>
+      </form>
+    </div>
+
+    <div id="jobPanel" class="panel hidden">
+      <div class="jobHeader">
+        <div>
+          <h2 class="h2">Scan Job</h2>
+          <p class="muted">Job ID: <span id="jobIdText">-</span></p>
+        </div>
+        <div class="jobActions">
+          <a id="openUiBtn" class="btn" href="#" target="_blank">Open Results</a>
+          <a id="downloadPdfBtn" class="btn" href="#" target="_blank">Download PDF</a>
+        </div>
+      </div>
+
+      <div class="progressWrap">
+        <div class="progressBar"><div id="progressFill" class="progressFill"></div></div>
+        <div class="progressMeta">
+          <span id="progressText" class="muted">Waiting…</span>
+          <span id="timerText" class="muted">00:00</span>
+        </div>
+      </div>
+
+      <pre id="out" class="output"></pre>
+    </div>
+  </div>
+
+<script>
+const statusBadge = document.getElementById("statusBadge");
+const jobPanel = document.getElementById("jobPanel");
+const out = document.getElementById("out");
+const jobIdText = document.getElementById("jobIdText");
+const openUiBtn = document.getElementById("openUiBtn");
+const downloadPdfBtn = document.getElementById("downloadPdfBtn");
+const progressFill = document.getElementById("progressFill");
+const progressText = document.getElementById("progressText");
+const timerText = document.getElementById("timerText");
+const startBtn = document.getElementById("startBtn");
+
+let pollTimer = null;
+let seconds = 0;
+
+function setBadge(state) {
+  statusBadge.className = "badge " + state;
+  statusBadge.textContent = state.toUpperCase();
+}
+
+function setProgress(pct, text) {
+  progressFill.style.width = pct + "%";
+  progressText.textContent = text;
+}
+
+function formatTime(s) {
+  const mm = String(Math.floor(s / 60)).padStart(2, "0");
+  const ss = String(s % 60).padStart(2, "0");
+  return `${mm}:${ss}`;
+}
+
+function resetUI() {
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = null;
+  seconds = 0;
+  timerText.textContent = "00:00";
+  out.textContent = "";
+  jobIdText.textContent = "-";
+  openUiBtn.href = "#";
+  downloadPdfBtn.href = "#";
+  downloadPdfBtn.classList.add("disabled");
+  setBadge("idle");
+  setProgress(0, "Waiting…");
+  jobPanel.classList.add("hidden");
+  startBtn.disabled = false;
+}
+
+document.getElementById("resetBtn").addEventListener("click", resetUI);
+
+document.getElementById("scanForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  resetUI();
+  startBtn.disabled = true;
+
+  const fd = new FormData(e.target);
+  const body = Object.fromEntries(fd.entries());
+
+  setBadge("queued");
+  setProgress(10, "Queued…");
+
+  const res = await fetch("/scan", {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify(body)
+  });
+
+  const data = await res.json();
+  out.textContent = JSON.stringify(data, null, 2);
+
+  if (!res.ok) {
+    setBadge("failed");
+    setProgress(0, data.error || "Failed");
+    startBtn.disabled = false;
+    return;
+  }
+
+  const jobId = data.job_id;
+  jobIdText.textContent = jobId;
+
+  openUiBtn.href = `/ui/${jobId}`;
+  downloadPdfBtn.href = `/scan/${jobId}/pdf`;
+  downloadPdfBtn.classList.add("disabled"); // enable only if pdf is available
+
+  jobPanel.classList.remove("hidden");
+
+  // poll status
+  pollTimer = setInterval(async () => {
+    seconds += 1;
+    timerText.textContent = formatTime(seconds);
+
+    const st = await fetch(`/scan/${jobId}`);
+    const job = await st.json();
+    out.textContent = JSON.stringify(job, null, 2);
+
+    const status = job.status || "unknown";
+
+    if (status === "queued") {
+      setBadge("queued");
+      setProgress(15, "Queued…");
+    } else if (status === "running") {
+      setBadge("running");
+      // fake progress bar movement
+      const pct = Math.min(90, 20 + Math.floor(seconds * 2));
+      setProgress(pct, "Scanning…");
+    } else if (status === "completed") {
+      setBadge("completed");
+      setProgress(100, "Completed ✅");
+      startBtn.disabled = false;
+
+      // If scan was PDF, backend stores pdf and provides download link
+      if (job.output_format === "pdf" && job.result && job.result.download) {
+        downloadPdfBtn.href = job.result.download;
+        downloadPdfBtn.classList.remove("disabled");
+      } else if (job.output_format === "pdf") {
+        // still allow endpoint (it will 404 if none)
+        downloadPdfBtn.classList.remove("disabled");
+      }
+
+      clearInterval(pollTimer);
+      pollTimer = null;
+    } else if (status === "failed") {
+      setBadge("failed");
+      setProgress(100, "Failed ❌");
+      startBtn.disabled = false;
+      clearInterval(pollTimer);
+      pollTimer = null;
+    }
+  }, 1000);
+});
+
+resetUI();
+</script>
 </body>
 </html>

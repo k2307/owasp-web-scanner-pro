@@ -1,27 +1,63 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-<title>Results</title>
-<link rel="stylesheet" href="/static/style.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Scan Results</title>
+  <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-<div class="container">
-<h1>Scan Summary</h1>
-<div class="summary">
-<div>High: {{ high }}</div>
-<div>Medium: {{ medium }}</div>
-<div>Low: {{ low }}</div>
-</div>
-{% for issue in issues %}
-<div class="card {{ issue.severity }}">
-<h3>{{ issue.title }}</h3>
-<p><b>Severity:</b> {{ issue.severity }}</p>
-<p>{{ issue.description }}</p>
-<p><b>Fix:</b> {{ issue.remediation }}</p>
-</div>
-{% endfor %}
-<br>
-<a class="btn" href="/download/{{ report }}">Download PDF</a>
-</div>
+  <div class="container">
+    <div class="header">
+      <div>
+        <h1>Scan Results</h1>
+        <p class="muted">Target: <b>{{ job.target }}</b> • Status: <b>{{ job.status }}</b></p>
+      </div>
+      <div class="jobActions">
+        <a class="btn" href="/">New Scan</a>
+        <a class="btn" href="/scan/{{ request.view_args['job_id'] }}">View JSON</a>
+        <a class="btn" href="/scan/{{ request.view_args['job_id'] }}/pdf">Download PDF</a>
+      </div>
+    </div>
+
+    {% if job.status != "completed" %}
+      <div class="panel">
+        <h2 class="h2">Not finished yet</h2>
+        <p class="muted">This scan is still running/queued. Refresh in a few seconds.</p>
+      </div>
+    {% endif %}
+
+    {% if job.status == "failed" %}
+      <div class="panel danger">
+        <h2 class="h2">Scan Failed</h2>
+        <pre class="output">{{ job.error }}</pre>
+      </div>
+    {% endif %}
+
+    {% if job.status == "completed" %}
+      <div class="panel">
+        <h2 class="h2">Summary</h2>
+
+        {% set issues = [] %}
+        {% if job.output_format == "json" and job.result %}
+          {# result is JSON string (pretty) from reporter.generate_json #}
+          <p class="muted">Output format: JSON</p>
+          <pre class="output">{{ job.result }}</pre>
+
+        {% elif job.output_format == "html" and job.result %}
+          <p class="muted">Output format: HTML</p>
+          <div class="htmlPreview">{{ job.result | safe }}</div>
+
+        {% elif job.output_format == "pdf" %}
+          <p class="muted">Output format: PDF</p>
+          <p><a class="btn primary" href="/scan/{{ request.view_args['job_id'] }}/pdf">Download PDF</a></p>
+          <p class="muted">PDF does not render inline here by default.</p>
+
+        {% else %}
+          <p class="muted">No result payload available.</p>
+        {% endif %}
+      </div>
+    {% endif %}
+  </div>
 </body>
 </html>
