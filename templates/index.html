@@ -8,59 +8,103 @@
 </head>
 <body>
   <div class="container">
-    <div class="header">
-      <div>
-        <h1>OWASP Web Scanner Pro</h1>
-        <p class="muted">Private scanner • Async modules • JSON / HTML / PDF reports</p>
+
+    <!-- HERO -->
+    <div class="hero">
+      <div class="heroLeft">
+        <div class="kicker">OWASP Web Scanner Pro</div>
+        <h1 class="heroTitle">Elite async scanning • attack-path correlation • CVSS scoring</h1>
+        <p class="heroSub muted">
+          Private scanner for authorized testing only. Non-destructive checks, deep crawling, modular plugins, JSON/HTML/PDF outputs.
+        </p>
+
+        <div class="heroBadges">
+          <span class="pill">Async Modules</span>
+          <span class="pill">Plugin Loader</span>
+          <span class="pill">Diff + Policy</span>
+          <span class="pill">Attack Paths</span>
+          <span class="pill">Live Feed</span>
+        </div>
       </div>
-      <span id="statusBadge" class="badge idle">Idle</span>
+
+      <div class="heroRight">
+        <div class="statusCard">
+          <div class="statusTop">
+            <div>
+              <div class="muted small">ENGINE STATUS</div>
+              <div id="engineStatusText" class="statusName">Ready</div>
+            </div>
+            <span id="statusBadge" class="badge idle">IDLE</span>
+          </div>
+          <div class="statusMeta muted">
+            Tip: Keep <code>/health</code> on UptimeRobot for Render.
+          </div>
+        </div>
+      </div>
     </div>
 
+    <!-- INPUT PANEL -->
     <div class="panel">
       <form id="scanForm" class="form">
-        <label class="label">Target URL</label>
-        <input class="input" name="target" placeholder="https://example.com" required>
+        <div class="formRow">
+          <div class="colGrow">
+            <label class="label">Target URL</label>
+            <input class="input" name="target" placeholder="https://example.com" required>
+            <div class="hint muted">Example: https://india.gov.in</div>
+          </div>
 
-        <div class="row">
-          <div class="col">
-            <label class="label">Output format</label>
+          <div class="colFixed">
+            <label class="label">Output</label>
             <select class="select" name="output_format">
               <option value="json">JSON</option>
               <option value="html">HTML</option>
               <option value="pdf">PDF</option>
             </select>
+            <div class="hint muted">PDF enables download</div>
           </div>
 
-          <div class="col">
+          <div class="colFixed">
             <label class="label">Profile</label>
             <select class="select" name="profile">
               <option value="fast">Fast</option>
               <option value="normal" selected>Normal</option>
               <option value="aggressive">Aggressive</option>
             </select>
+            <div id="profileHint" class="hint muted">Balanced depth + speed</div>
           </div>
         </div>
 
         <div class="actions">
           <button id="startBtn" class="btn primary" type="submit">Start Scan</button>
           <button id="resetBtn" class="btn" type="button">Reset</button>
+          <label class="toggle">
+            <input id="autoOpen" type="checkbox" checked>
+            <span>Auto-open results on completion</span>
+          </label>
         </div>
 
         <p class="disclaimer">
-          ⚠️ Scan only systems you own or have explicit permission to test. Non-destructive checks only.
+          ⚠️ Authorized testing only. You must own the target or have explicit written permission.
         </p>
+
+        <div id="formError" class="errorBox hidden"></div>
       </form>
     </div>
 
+    <!-- JOB PANEL -->
     <div id="jobPanel" class="panel hidden">
       <div class="jobHeader">
         <div>
           <h2 class="h2">Scan Job</h2>
-          <p class="muted">Job ID: <span id="jobIdText">-</span></p>
+          <div class="jobLine muted">
+            Job ID: <span id="jobIdText">-</span>
+            <button id="copyJobBtn" class="btn smallBtn" type="button">Copy</button>
+          </div>
         </div>
+
         <div class="jobActions">
           <a id="openUiBtn" class="btn" href="#" target="_blank">Open Results</a>
-          <a id="downloadPdfBtn" class="btn" href="#" target="_blank">Download PDF</a>
+          <a id="downloadPdfBtn" class="btn disabled" href="#" target="_blank">Download PDF</a>
         </div>
       </div>
 
@@ -72,28 +116,88 @@
         </div>
       </div>
 
-      <pre id="out" class="output"></pre>
+      <div class="tabs">
+        <button class="tab active" data-tab="summary">Summary</button>
+        <button class="tab" data-tab="raw">Raw JSON</button>
+        <button class="tab" data-tab="live">Live Feed</button>
+        <button id="copyJsonBtn" class="btn smallBtn" type="button">Copy JSON</button>
+      </div>
+
+      <div id="tab-summary" class="tabPane">
+        <div class="summaryGrid">
+          <div class="miniCard">
+            <div class="muted small">STATUS</div>
+            <div id="miniStatus" class="miniValue">—</div>
+          </div>
+          <div class="miniCard">
+            <div class="muted small">PROFILE</div>
+            <div id="miniProfile" class="miniValue">—</div>
+          </div>
+          <div class="miniCard">
+            <div class="muted small">OUTPUT</div>
+            <div id="miniOutput" class="miniValue">—</div>
+          </div>
+        </div>
+
+        <div class="muted small" style="margin-top:10px;">
+          Note: In-memory jobs reset if the service restarts. Set <code>WEB_CONCURRENCY=1</code> on Render.
+        </div>
+      </div>
+
+      <div id="tab-raw" class="tabPane hidden">
+        <pre id="out" class="output"></pre>
+      </div>
+
+      <div id="tab-live" class="tabPane hidden">
+        <div class="muted small" style="margin-bottom:8px;">
+          Live events stream (requires backend <code>/events/&lt;job_id&gt;</code> SSE).
+        </div>
+        <pre id="liveFeed" class="output" style="max-height:260px;"></pre>
+      </div>
     </div>
+
   </div>
 
 <script>
 const statusBadge = document.getElementById("statusBadge");
+const engineStatusText = document.getElementById("engineStatusText");
+
 const jobPanel = document.getElementById("jobPanel");
 const out = document.getElementById("out");
+const liveFeed = document.getElementById("liveFeed");
+
 const jobIdText = document.getElementById("jobIdText");
 const openUiBtn = document.getElementById("openUiBtn");
 const downloadPdfBtn = document.getElementById("downloadPdfBtn");
+
 const progressFill = document.getElementById("progressFill");
 const progressText = document.getElementById("progressText");
 const timerText = document.getElementById("timerText");
 const startBtn = document.getElementById("startBtn");
 
+const formError = document.getElementById("formError");
+const profileHint = document.getElementById("profileHint");
+
+const miniStatus = document.getElementById("miniStatus");
+const miniProfile = document.getElementById("miniProfile");
+const miniOutput = document.getElementById("miniOutput");
+
+const autoOpen = document.getElementById("autoOpen");
+const copyJobBtn = document.getElementById("copyJobBtn");
+const copyJsonBtn = document.getElementById("copyJsonBtn");
+
 let pollTimer = null;
 let seconds = 0;
+let lastJobJson = "";
+let sse = null;
 
 function setBadge(state) {
   statusBadge.className = "badge " + state;
   statusBadge.textContent = state.toUpperCase();
+}
+
+function setEngineText(text) {
+  if (engineStatusText) engineStatusText.textContent = text;
 }
 
 function setProgress(pct, text) {
@@ -107,23 +211,119 @@ function formatTime(s) {
   return `${mm}:${ss}`;
 }
 
+function showError(msg) {
+  formError.textContent = msg;
+  formError.classList.remove("hidden");
+}
+
+function clearError() {
+  formError.textContent = "";
+  formError.classList.add("hidden");
+}
+
+async function copyText(txt) {
+  try { await navigator.clipboard.writeText(txt); } catch (e) {}
+}
+
+function feedLine(s){
+  if (!liveFeed) return;
+  liveFeed.textContent += s + "\n";
+  liveFeed.scrollTop = liveFeed.scrollHeight;
+}
+
+function closeSSE(){
+  if (sse) {
+    try { sse.close(); } catch(e) {}
+    sse = null;
+  }
+}
+
 function resetUI() {
+  clearError();
+  closeSSE();
+
   if (pollTimer) clearInterval(pollTimer);
   pollTimer = null;
+
   seconds = 0;
   timerText.textContent = "00:00";
-  out.textContent = "";
+
+  if (out) out.textContent = "";
+  if (liveFeed) liveFeed.textContent = "";
+
+  lastJobJson = "";
+
   jobIdText.textContent = "-";
   openUiBtn.href = "#";
   downloadPdfBtn.href = "#";
   downloadPdfBtn.classList.add("disabled");
+
+  miniStatus.textContent = "—";
+  miniProfile.textContent = "—";
+  miniOutput.textContent = "—";
+
   setBadge("idle");
+  setEngineText("Ready");
   setProgress(0, "Waiting…");
   jobPanel.classList.add("hidden");
   startBtn.disabled = false;
 }
 
 document.getElementById("resetBtn").addEventListener("click", resetUI);
+
+document.querySelector("select[name='profile']").addEventListener("change", (e) => {
+  const v = e.target.value;
+  if (v === "fast") profileHint.textContent = "Quick checks • low depth • low noise";
+  else if (v === "aggressive") profileHint.textContent = "Deep crawl • more endpoints • more signals";
+  else profileHint.textContent = "Balanced depth + speed";
+});
+
+copyJobBtn.addEventListener("click", () => copyText(jobIdText.textContent.trim()));
+copyJsonBtn.addEventListener("click", () => copyText(lastJobJson || (out ? out.textContent : "") || ""));
+
+document.querySelectorAll(".tab").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+
+    const tab = btn.getAttribute("data-tab");
+    document.getElementById("tab-summary").classList.toggle("hidden", tab !== "summary");
+    document.getElementById("tab-raw").classList.toggle("hidden", tab !== "raw");
+    document.getElementById("tab-live").classList.toggle("hidden", tab !== "live");
+  });
+});
+
+function openLiveFeed(jobId){
+  closeSSE();
+  if (!liveFeed) return;
+
+  // If your backend doesn't have this route yet, you'll just see a connection error line.
+  sse = new EventSource(`/events/${jobId}`);
+
+  sse.onmessage = (msg) => {
+    try{
+      const evt = JSON.parse(msg.data);
+      const t = new Date((evt.ts || Date.now()) * 1000).toLocaleTimeString();
+      feedLine(`[${t}] ${evt.event}: ${evt.message}`);
+    }catch(e){
+      feedLine(msg.data);
+    }
+  };
+
+  sse.addEventListener("done", (m) => {
+    try{
+      const d = JSON.parse(m.data);
+      feedLine(`--- STREAM CLOSED (${d.status}) ---`);
+    }catch(e){
+      feedLine("--- STREAM CLOSED ---");
+    }
+    closeSSE();
+  });
+
+  sse.onerror = () => {
+    feedLine("[!] Live feed connection error (backend /events/<job_id> not available or blocked).");
+  };
+}
 
 document.getElementById("scanForm").addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -133,21 +333,42 @@ document.getElementById("scanForm").addEventListener("submit", async (e) => {
   const fd = new FormData(e.target);
   const body = Object.fromEntries(fd.entries());
 
+  clearError();
+
+  if (!body.target || !body.target.trim()) {
+    showError("Target URL is required.");
+    startBtn.disabled = false;
+    return;
+  }
+
   setBadge("queued");
+  setEngineText("Submitting job…");
   setProgress(10, "Queued…");
 
-  const res = await fetch("/scan", {
-    method: "POST",
-    headers: {"Content-Type":"application/json"},
-    body: JSON.stringify(body)
-  });
+  let res, data;
+  try {
+    res = await fetch("/scan", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify(body)
+    });
+    data = await res.json();
+  } catch (err) {
+    showError("Failed to reach backend. Check hosting logs.");
+    setBadge("failed");
+    setEngineText("Backend unreachable");
+    startBtn.disabled = false;
+    return;
+  }
 
-  const data = await res.json();
-  out.textContent = JSON.stringify(data, null, 2);
+  lastJobJson = JSON.stringify(data, null, 2);
+  if (out) out.textContent = lastJobJson;
 
   if (!res.ok) {
     setBadge("failed");
+    setEngineText("Request failed");
     setProgress(0, data.error || "Failed");
+    showError(data.error || "Scan request failed.");
     startBtn.disabled = false;
     return;
   }
@@ -157,51 +378,70 @@ document.getElementById("scanForm").addEventListener("submit", async (e) => {
 
   openUiBtn.href = `/ui/${jobId}`;
   downloadPdfBtn.href = `/scan/${jobId}/pdf`;
-  downloadPdfBtn.classList.add("disabled"); // enable only if pdf is available
+  downloadPdfBtn.classList.add("disabled");
 
   jobPanel.classList.remove("hidden");
+  miniProfile.textContent = body.profile;
+  miniOutput.textContent = body.output_format;
+
+  // Start live feed immediately (if backend supports it)
+  feedLine(`[+] Live feed for job ${jobId}...`);
+  openLiveFeed(jobId);
 
   // poll status
   pollTimer = setInterval(async () => {
     seconds += 1;
     timerText.textContent = formatTime(seconds);
 
-    const st = await fetch(`/scan/${jobId}`);
-    const job = await st.json();
-    out.textContent = JSON.stringify(job, null, 2);
+    let st, job;
+    try {
+      st = await fetch(`/scan/${jobId}`);
+      job = await st.json();
+    } catch (e) {
+      return;
+    }
+
+    lastJobJson = JSON.stringify(job, null, 2);
+    if (out) out.textContent = lastJobJson;
 
     const status = job.status || "unknown";
+    miniStatus.textContent = status;
 
     if (status === "queued") {
       setBadge("queued");
+      setEngineText("Queued");
       setProgress(15, "Queued…");
     } else if (status === "running") {
       setBadge("running");
-      // fake progress bar movement
-      const pct = Math.min(90, 20 + Math.floor(seconds * 2));
+      setEngineText("Scanning…");
+      const pct = Math.min(92, 20 + Math.floor(seconds * 2));
       setProgress(pct, "Scanning…");
     } else if (status === "completed") {
       setBadge("completed");
+      setEngineText("Completed");
       setProgress(100, "Completed ✅");
       startBtn.disabled = false;
 
-      // If scan was PDF, backend stores pdf and provides download link
-      if (job.output_format === "pdf" && job.result && job.result.download) {
-        downloadPdfBtn.href = job.result.download;
-        downloadPdfBtn.classList.remove("disabled");
-      } else if (job.output_format === "pdf") {
-        // still allow endpoint (it will 404 if none)
+      if (job.output_format === "pdf") {
         downloadPdfBtn.classList.remove("disabled");
       }
 
       clearInterval(pollTimer);
       pollTimer = null;
+
+      if (autoOpen.checked) {
+        window.open(`/ui/${jobId}`, "_blank");
+      }
     } else if (status === "failed") {
       setBadge("failed");
+      setEngineText("Failed");
       setProgress(100, "Failed ❌");
       startBtn.disabled = false;
+
       clearInterval(pollTimer);
       pollTimer = null;
+
+      if (job.error) showError(job.error);
     }
   }, 1000);
 });

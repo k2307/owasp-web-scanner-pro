@@ -8,11 +8,17 @@
 </head>
 <body>
   <div class="container">
+
     <div class="header">
       <div>
-        <h1>Scan Results</h1>
-        <p class="muted">Target: <b>{{ job.target }}</b> • Status: <b>{{ job.status }}</b></p>
+        <h1 class="title">Scan Results</h1>
+        <p class="muted">
+          Target: <b>{{ job.target }}</b>
+          • Status: <b id="jobStatus">{{ job.status }}</b>
+          • Profile: <b>{{ job.profile }}</b>
+        </p>
       </div>
+
       <div class="jobActions">
         <a class="btn" href="/">New Scan</a>
         <a class="btn" href="/scan/{{ request.view_args['job_id'] }}">View JSON</a>
@@ -20,10 +26,36 @@
       </div>
     </div>
 
-    {% if job.status != "completed" %}
+    <!-- LIVE FEED + PROGRESS (Always visible) -->
+    <div class="panel">
+      <div class="jobHeader" style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
+        <div>
+          <h2 class="h2">Live Scan Feed</h2>
+          <p class="muted">
+            Modules: <b id="modDone">0</b>/<b id="modTotal">0</b>
+            • Findings: <b id="findingCount">0</b>
+          </p>
+        </div>
+        <span id="liveBadge" class="badge idle">IDLE</span>
+      </div>
+
+      <div class="progressWrap" style="margin-top:10px;">
+        <div class="progressBar" style="height:10px;border-radius:999px;overflow:hidden;background:#0b1220;">
+          <div id="progressFill" class="progressFill" style="height:100%;width:0%;background:#2563eb;"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:8px;">
+          <span id="progressText" class="muted">Waiting…</span>
+          <span id="timerText" class="muted">00:00</span>
+        </div>
+      </div>
+
+      <pre id="liveFeed" class="output" style="max-height:280px;margin-top:12px;overflow:auto;"></pre>
+    </div>
+
+    {% if job.status != "completed" and job.status != "failed" %}
       <div class="panel">
-        <h2 class="h2">Not finished yet</h2>
-        <p class="muted">This scan is still running/queued. Refresh in a few seconds.</p>
+        <h2 class="h2">Scan in progress…</h2>
+        <p class="muted">This scan is still running/queued. Live feed will update automatically.</p>
       </div>
     {% endif %}
 
@@ -35,29 +67,285 @@
     {% endif %}
 
     {% if job.status == "completed" %}
+
+      {% set result = job.result or {} %}
+      {% set score = result.get("score", {}) %}
+      {% set policy = result.get("policy", {}) %}
+      {% set diff = result.get("diff", {}) %}
+      {% set paths = result.get("attack_paths", []) %}
+      {% set findings = result.get("findings", issues) %}
+
+      <!-- Summary row -->
+      <div class="grid">
+
+        <div class="panel">
+          <h2 class="h2">Risk Score</h2>
+          <div class="big">
+            {{ score.get("score", "N/A") }}
+            <span class="badge">{{ score.get("grade", "N/A") }}</span>
+          </div>
+          <p class="muted">Overall risk rating derived from CVSS + severity weighting.</p>
+        </div>
+
+        <div class="panel">
+          <h2 class="h2">Policy Decision</h2>
+
+          {% set decision = (policy.get("decision","pass")|lower) %}
+          <div class="big">
+            {% if decision == "fail" %}
+              <span class="badge danger">FAIL</span>
+            {% elif decision == "warn" %}
+              <span class="badge warn">WARN</span>
+            {% else %}
+              <span class="badge ok">PASS</span>
+            {% endif %}
+          </div>
+
+          <ul class="muted">
+            {% for r in policy.get("reasons", []) %}
+              <li>{{ r }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+
+        <div class="panel">
+          <h2 class="h2">Severity Breakdown</h2>
+          <div class="sevRow">
+            <span class="sev critical">Critical: {{ counts.Critical }}</span>
+            <span class="sev high">High: {{ counts.High }}</span>
+            <span class="sev med">Medium: {{ counts.Medium }}</span>
+            <span class="sev low">Low: {{ counts.Low }}</span>
+            <span class="sev info">Info: {{ counts.Info }}</span>
+          </div>
+          <p class="muted">Counts reflect correlated findings.</p>
+        </div>
+
+      </div>
+
+      <!-- Diff / Regression -->
       <div class="panel">
-        <h2 class="h2">Summary</h2>
+        <h2 class="h2">Regression (Since Last Scan)</h2>
 
-        {% set issues = [] %}
-        {% if job.output_format == "json" and job.result %}
-          {# result is JSON string (pretty) from reporter.generate_json #}
-          <p class="muted">Output format: JSON</p>
-          <pre class="output">{{ job.result }}</pre>
+        {% if diff %}
+          <div class="diffRow">
+            <div>
+              <b>Score delta:</b>
+              {% if diff.get("score_delta") is not none %}
+                {{ diff.get("score_delta") }}
+              {% else %}
+                N/A
+              {% endif %}
+            </div>
+            <div><b>New:</b> {{ (diff.get("new_findings") or [])|length }}</div>
+            <div><b>Resolved:</b> {{ (diff.get("resolved_findings") or [])|length }}</div>
+          </div>
 
-        {% elif job.output_format == "html" and job.result %}
-          <p class="muted">Output format: HTML</p>
-          <div class="htmlPreview">{{ job.result | safe }}</div>
+          {% if (diff.get("new_findings") or [])|length > 0 %}
+            <h3 class="h3">New findings</h3>
+            <ul>
+              {% for f in diff.get("new_findings", [])[:8] %}
+                <li><b>{{ f.title }}</b> <span class="badge small">{{ f.severity }}</span></li>
+              {% endfor %}
+            </ul>
+          {% endif %}
 
-        {% elif job.output_format == "pdf" %}
-          <p class="muted">Output format: PDF</p>
-          <p><a class="btn primary" href="/scan/{{ request.view_args['job_id'] }}/pdf">Download PDF</a></p>
-          <p class="muted">PDF does not render inline here by default.</p>
+          {% if (diff.get("resolved_findings") or [])|length > 0 %}
+            <h3 class="h3">Resolved findings</h3>
+            <ul>
+              {% for f in diff.get("resolved_findings", [])[:8] %}
+                <li><b>{{ f.title }}</b> <span class="badge small">{{ f.severity }}</span></li>
+              {% endfor %}
+            </ul>
+          {% endif %}
 
+          <p class="muted">Tip: persistence needs a Render Disk for real trending.</p>
         {% else %}
-          <p class="muted">No result payload available.</p>
+          <p class="muted">No previous scan available yet (first scan for this target).</p>
         {% endif %}
       </div>
+
+      <!-- Attack Paths -->
+      <div class="panel">
+        <h2 class="h2">Attack Paths (God Mode)</h2>
+
+        {% if paths and paths|length > 0 %}
+          {% for p in paths %}
+            <div class="card">
+              <div class="cardTop">
+                <h3 class="h3">{{ p.name }}</h3>
+                <span class="badge {% if p.risk|lower == 'critical' %}danger{% elif p.risk|lower == 'high' %}warn{% else %}ok{% endif %}">
+                  {{ p.risk }}
+                </span>
+              </div>
+
+              <p class="muted">{{ p.impact }}</p>
+
+              <ol class="steps">
+                {% for s in p.steps %}
+                  <li>{{ s }}</li>
+                {% endfor %}
+              </ol>
+
+              <p class="muted"><b>Confidence:</b> {{ p.confidence }}</p>
+            </div>
+          {% endfor %}
+        {% else %}
+          <p class="muted">No attack chains detected from current signals.</p>
+        {% endif %}
+      </div>
+
+      <!-- Findings List -->
+      <div class="panel">
+        <h2 class="h2">Findings</h2>
+
+        {% if findings and findings|length > 0 %}
+          {% for f in findings %}
+            <div class="card">
+              <div class="cardTop">
+                <h3 class="h3">{{ f.title }}</h3>
+                <span class="badge small">{{ f.severity }}</span>
+              </div>
+
+              {% if f.get("cvss_vector") %}
+                <p class="muted"><b>CVSS:</b> <code>{{ f.cvss_vector }}</code></p>
+              {% endif %}
+
+              <p>{{ f.description }}</p>
+              <p class="muted"><b>Fix:</b> {{ f.remediation }}</p>
+
+              {% if f.get("metadata") %}
+                <details>
+                  <summary class="muted">Evidence / Metadata</summary>
+                  <pre class="output">{{ f.metadata | tojson(indent=2) }}</pre>
+                </details>
+              {% endif %}
+            </div>
+          {% endfor %}
+        {% else %}
+          <p class="muted">No findings reported.</p>
+        {% endif %}
+      </div>
+
     {% endif %}
   </div>
+
+  <script>
+(function(){
+  const jobId = "{{ request.view_args['job_id'] }}";
+  const feed = document.getElementById("liveFeed");
+  const modDoneEl = document.getElementById("modDone");
+  const modTotalEl = document.getElementById("modTotal");
+  const findingCountEl = document.getElementById("findingCount");
+  const badge = document.getElementById("liveBadge");
+  const progressFill = document.getElementById("progressFill");
+  const progressText = document.getElementById("progressText");
+  const timerText = document.getElementById("timerText");
+  const jobStatus = document.getElementById("jobStatus");
+
+  if (!feed) return;
+
+  let seconds = 0;
+  let timer = setInterval(() => {
+    seconds += 1;
+    const mm = String(Math.floor(seconds / 60)).padStart(2, "0");
+    const ss = String(seconds % 60).padStart(2, "0");
+    timerText.textContent = `${mm}:${ss}`;
+  }, 1000);
+
+  let moduleDone = 0;
+  let moduleTotal = 0;
+  let findingCount = 0;
+
+  function setBadge(state){
+    badge.className = "badge " + state;
+    badge.textContent = state.toUpperCase();
+  }
+  function setProgress(pct, text){
+    progressFill.style.width = pct + "%";
+    progressText.textContent = text;
+  }
+  function line(s){
+    feed.textContent += s + "\n";
+    feed.scrollTop = feed.scrollHeight;
+  }
+  function updateCounters(){
+    modDoneEl.textContent = moduleDone;
+    modTotalEl.textContent = moduleTotal;
+    findingCountEl.textContent = findingCount;
+    if (moduleTotal > 0) {
+      const pct = Math.min(99, Math.floor((moduleDone / moduleTotal) * 100));
+      setProgress(pct, `Modules completed: ${moduleDone}/${moduleTotal}`);
+    }
+  }
+
+  setBadge("queued");
+  setProgress(5, "Connecting…");
+
+  const ev = new EventSource(`/events/${jobId}`);
+
+  ev.onmessage = (msg) => {
+    try {
+      const evt = JSON.parse(msg.data);
+      const t = new Date((evt.ts || Date.now()) * 1000).toLocaleTimeString();
+      line(`[${t}] ${evt.event}: ${evt.message}`);
+
+      if (evt.event === "job_queued") {
+        setBadge("queued");
+        setProgress(10, "Queued…");
+        jobStatus.textContent = "queued";
+      }
+      if (evt.event === "job_running" || evt.event === "scan_start") {
+        setBadge("running");
+        setProgress(15, "Running…");
+        jobStatus.textContent = "running";
+      }
+
+      if (evt.event === "modules_loaded") {
+        moduleTotal = evt.data?.count || 0;
+        updateCounters();
+        setProgress(20, `Loaded ${moduleTotal} modules`);
+      }
+
+      if (evt.event === "module_done") {
+        moduleDone += 1;
+        // count findings if module reports it
+        if (typeof evt.data?.findings === "number") findingCount += evt.data.findings;
+        updateCounters();
+        setBadge("running");
+      }
+
+      if (evt.event === "scan_done" || evt.event === "job_completed") {
+        setBadge("completed");
+        setProgress(100, "Completed ✅");
+        jobStatus.textContent = "completed";
+      }
+
+      if (evt.event === "job_failed") {
+        setBadge("failed");
+        setProgress(100, "Failed ❌");
+        jobStatus.textContent = "failed";
+      }
+
+    } catch(e){}
+  };
+
+  ev.addEventListener("done", (m) => {
+    try {
+      const d = JSON.parse(m.data);
+      line(`--- STREAM CLOSED (${d.status}) ---`);
+      if (d.status === "completed") setBadge("completed");
+      if (d.status === "failed") setBadge("failed");
+    } catch(e){
+      line(`--- STREAM CLOSED ---`);
+    }
+    clearInterval(timer);
+    ev.close();
+  });
+
+  ev.onerror = () => {
+    line("[!] Live feed connection error (retrying automatically)...");
+  };
+})();
+  </script>
 </body>
 </html>
