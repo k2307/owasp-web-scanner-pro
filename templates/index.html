@@ -9,8 +9,10 @@
 <body>
   <div class="container">
 
-    <!-- HERO -->
+    <!-- HERO + RIGHT COLUMN STACK -->
     <div class="hero">
+
+      <!-- LEFT -->
       <div class="heroLeft">
         <div class="kicker">OWASP Web Scanner Pro</div>
         <h1 class="heroTitle">Elite async scanning • attack-path correlation • CVSS scoring</h1>
@@ -27,63 +29,71 @@
         </div>
       </div>
 
+      <!-- RIGHT -->
       <div class="heroRight">
-        <div class="statusCard">
-  <div class="statusCenter">
-    <div class="muted small">ENGINE STATUS</div>
-    <div id="engineStatusText" class="statusName">Ready</div>
-    <span id="statusBadge" class="badge idle">IDLE</span>
-  </div>
-</div>
-    </div>
 
-    <!-- INPUT PANEL -->
-    <div class="panel">
-      <form id="scanForm" class="form">
-        <div class="formRow">
-          <div class="colGrow">
-            <label class="label">Target URL</label>
-            <input class="input" name="target" placeholder="https://example.com" required>
-            <div class="hint muted">Example: https://india.gov.in</div>
+        <div class="rightStack">
+
+          <!-- ENGINE STATUS (small square pinned top-right) -->
+          <div class="statusRow">
+            <div class="statusSquare">
+              <div class="muted small">ENGINE STATUS</div>
+              <div id="engineStatusText" class="statusName">Ready</div>
+              <span id="statusBadge" class="badge idle">IDLE</span>
+            </div>
           </div>
 
-          <div class="colFixed">
-            <label class="label">Output</label>
-            <select class="select" name="output_format">
-              <option value="json">JSON</option>
-              <option value="html">HTML</option>
-              <option value="pdf">PDF</option>
-            </select>
-            <div class="hint muted">PDF enables download</div>
+          <!-- INPUT PANEL -->
+          <div class="panel">
+            <form id="scanForm" class="form">
+              <div class="formRow">
+                <div class="colGrow">
+                  <label class="label">Target URL</label>
+                  <input class="input" name="target" placeholder="https://example.com" required>
+                  <div class="hint muted">Example: https://india.gov.in</div>
+                </div>
+
+                <div class="colFixed">
+                  <label class="label">Output</label>
+                  <select class="select" name="output_format">
+                    <option value="json">JSON</option>
+                    <option value="html">HTML</option>
+                    <option value="pdf">PDF</option>
+                  </select>
+                  <div class="hint muted">PDF enables download</div>
+                </div>
+
+                <div class="colFixed">
+                  <label class="label">Profile</label>
+                  <select class="select" name="profile">
+                    <option value="fast">Fast</option>
+                    <option value="normal" selected>Normal</option>
+                    <option value="aggressive">Aggressive</option>
+                  </select>
+                  <div id="profileHint" class="hint muted">Balanced depth + speed</div>
+                </div>
+              </div>
+
+              <div class="actions">
+                <button id="startBtn" class="btn primary" type="submit">Start Scan</button>
+                <button id="resetBtn" class="btn" type="button">Reset</button>
+                <label class="toggle">
+                  <input id="autoOpen" type="checkbox" checked>
+                  <span>Auto-open results on completion</span>
+                </label>
+              </div>
+
+              <p class="disclaimer">
+                ⚠️ Authorized testing only. You must own the target or have explicit written permission.
+              </p>
+
+              <div id="formError" class="errorBox hidden"></div>
+            </form>
           </div>
 
-          <div class="colFixed">
-            <label class="label">Profile</label>
-            <select class="select" name="profile">
-              <option value="fast">Fast</option>
-              <option value="normal" selected>Normal</option>
-              <option value="aggressive">Aggressive</option>
-            </select>
-            <div id="profileHint" class="hint muted">Balanced depth + speed</div>
-          </div>
-        </div>
-
-        <div class="actions">
-          <button id="startBtn" class="btn primary" type="submit">Start Scan</button>
-          <button id="resetBtn" class="btn" type="button">Reset</button>
-          <label class="toggle">
-            <input id="autoOpen" type="checkbox" checked>
-            <span>Auto-open results on completion</span>
-          </label>
-        </div>
-
-        <p class="disclaimer">
-          ⚠️ Authorized testing only. You must own the target or have explicit written permission.
-        </p>
-
-        <div id="formError" class="errorBox hidden"></div>
-      </form>
-    </div>
+        </div><!-- /rightStack -->
+      </div><!-- /heroRight -->
+    </div><!-- /hero -->
 
     <!-- JOB PANEL -->
     <div id="jobPanel" class="panel hidden">
@@ -291,7 +301,6 @@ function openLiveFeed(jobId){
   closeSSE();
   if (!liveFeed) return;
 
-  // If your backend doesn't have this route yet, you'll just see a connection error line.
   sse = new EventSource(`/events/${jobId}`);
 
   sse.onmessage = (msg) => {
@@ -378,11 +387,9 @@ document.getElementById("scanForm").addEventListener("submit", async (e) => {
   miniProfile.textContent = body.profile;
   miniOutput.textContent = body.output_format;
 
-  // Start live feed immediately (if backend supports it)
   feedLine(`[+] Live feed for job ${jobId}...`);
   openLiveFeed(jobId);
 
-  // poll status
   pollTimer = setInterval(async () => {
     seconds += 1;
     timerText.textContent = formatTime(seconds);

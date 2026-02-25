@@ -358,6 +358,9 @@ details[open] summary{
   transition: width 220ms ease;
 }
 
+/* -------------------------
+   HERO (Index)
+------------------------- */
 .heroLeft{ flex: 1; }
 
 .kicker{
@@ -374,9 +377,17 @@ details[open] summary{
   line-height:1.1;
 }
 
-@media (max-width: 900px){
-  .hero{ flex-direction:column; }
-  .heroRight{ width:100%; }
+/* HERO layout: left text + right column */
+.hero{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:22px;
+  margin-bottom:18px;
+}
+
+.heroRight{
+  width: min(520px, 100%);
 }
 
 /* ===== Additions for index.html (elite polish) ===== */
@@ -428,53 +439,58 @@ details[open] summary{
   margin-top:6px;
 }
 
-.statusMeta{
-  margin-top:10px;
-  padding-top:10px;
-  border-top:1px solid rgba(150,180,255,0.12);
-}
-
 .tabPane{
   margin-top:12px;
 }
 
-.topGrid{
-  display:grid;
-  grid-template-columns: 1.15fr 1fr;
-  gap:22px;
-  align-items:start;
-  margin-bottom:18px;
-}
-
+/* Right column stack: status box on top, form below */
 .rightStack{
   display:flex;
   flex-direction:column;
   gap:16px;
+  align-items:stretch;
 }
 
-/* Engine status centered inside card */
-.statusCenter{
+/* This row pins the square to the top-right */
+.statusRow{
+  display:flex;
+  justify-content:flex-end;
+}
+
+/* Small square box */
+.statusSquare{
+  width: 190px;
+  height: 140px;
+  background:rgba(255,255,255,0.04);
+  border:1px solid rgba(150,180,255,0.15);
+  border-radius:16px;
+  padding:14px;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(6px);
+
   display:flex;
   flex-direction:column;
   align-items:center;
   justify-content:center;
   text-align:center;
   gap:8px;
-  min-height:110px;
 }
 
-/* Make sure the status card hugs the right column nicely */
-.statusCard{
-  background:rgba(255,255,255,0.04);
-  border:1px solid rgba(150,180,255,0.15);
-  border-radius:16px;
-  padding:16px;
-  height:auto;
+.statusSquare .statusName{
+  font-size:18px;
+  font-weight:900;
+  margin:0;
 }
 
 /* Responsive: stack on small screens */
 @media (max-width: 900px){
-  .topGrid{
-    grid-template-columns: 1fr;
+  .hero{ flex-direction:column; }
+  .heroRight{ width:100%; }
+  .statusRow{ justify-content:flex-start; }
+  .statusSquare{
+    width:100%;
+    height:auto;
+    align-items:flex-start;
+    text-align:left;
   }
 }
