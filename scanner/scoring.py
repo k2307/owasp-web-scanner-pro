@@ -17,7 +17,6 @@ MAX_POINTS = 100
 AV = {"N": 0.85, "A": 0.62, "L": 0.55, "P": 0.20}
 AC = {"L": 0.77, "H": 0.44}
 UI = {"N": 0.85, "R": 0.62}
-SCOPE = {"U": "U", "C": "C"}
 CIA = {"N": 0.00, "L": 0.22, "H": 0.56}
 
 # PR depends on Scope
@@ -89,8 +88,7 @@ def _parse_cvss_vector(vector: str) -> Optional[Dict[str, str]]:
         return None
     v = vector.strip()
     if v.startswith("CVSS:"):
-        parts = v.split("/")
-        parts = parts[1:]  # skip CVSS:3.1
+        parts = v.split("/")[1:]  # skip CVSS:3.1
     else:
         parts = v.split("/")
 
@@ -109,7 +107,7 @@ def _parse_cvss_vector(vector: str) -> Optional[Dict[str, str]]:
 
 def _calc_cvss_base(metrics: Dict[str, str]) -> Optional[float]:
     """
-    CVSS v3.1 Base Score calculator (minimal, base only).
+    CVSS v3.1 Base Score calculator (base only).
     Returns score 0.0 - 10.0
     """
     try:
@@ -146,7 +144,7 @@ def _calc_cvss_base(metrics: Dict[str, str]) -> Optional[float]:
 
 def _get_cvss_from_finding(f: Dict[str, Any]) -> Optional[float]:
     """
-    Minimal-change: supports either:
+    Supports either:
       f["cvss"] as dict of metrics
       f["cvss_vector"] as string
     """
@@ -167,7 +165,10 @@ def _get_cvss_from_finding(f: Dict[str, Any]) -> Optional[float]:
 
 def calculate_score(findings: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
-    Minimal change output + adds optional cvss_summary.
+    CVSS-based scoring (minimal-change outputs).
+
+    - If any CVSS exists: overall score driven by top-N CVSS distribution.
+    - If no CVSS exists: fallback severity-volume model.
     """
     if not findings:
         return {
@@ -180,7 +181,7 @@ def calculate_score(findings: List[Dict[str, Any]]) -> Dict[str, Any]:
         }
 
     # Normalize + dedup
-    unique = {}
+    unique: dict[Tuple[str, str, str], Dict[str, Any]] = {}
     for f in findings:
         f = dict(f)
         f["severity"] = _norm_sev(f.get("severity"))
@@ -188,52 +189,61 @@ def calculate_score(findings: List[Dict[str, Any]]) -> Dict[str, Any]:
 
     uniq = list(unique.values())
 
-    # Compute CVSS if present; otherwise keep severity.
-    cvss_scores = []
+    # Compute CVSS if present
+    cvss_scores: list[float] = []
     for f in uniq:
         cv = _get_cvss_from_finding(f)
         if cv is not None:
-            f["cvss_score"] = cv
-            # optionally align severity to CVSS bands (minimal change: only if module didn't set severity)
-            # We'll keep your existing severity unless you want auto overwrite.
-            cvss_scores.append(cv)
+            f["cvss_score"] = float(cv)
+            cvss_scores.append(float(cv))
 
-    # Counts by severity (your existing UI expects this)
+            # Optional alignment: if module left severity as Info/Low etc., keep it.
+            # BUT if it set something nonsense/empty, derive from CVSS.
+            if f.get("severity") in (None, "", "Info"):
+                f["severity"] = _severity_from_cvss(float(cv))
+
+    # Severity counts for UI
     counts = Counter(f["severity"] for f in uniq)
     for k in ("Critical", "High", "Medium", "Low", "Info"):
         counts.setdefault(k, 0)
 
-    # Global risk score: if any CVSS exists, blend CVSS + fallback weights
-    # Minimal change: use CVSS max as a strong driver, plus some weight sum for volume.
     has_cvss = len(cvss_scores) > 0
     max_cvss = max(cvss_scores) if cvss_scores else None
     avg_cvss = (sum(cvss_scores) / len(cvss_scores)) if cvss_scores else None
 
-    # Fallback weight sum (volume-based)
+    # Fallback volume model (kept)
     total_weight = sum(SEVERITY_WEIGHT.get(f["severity"], 0.5) for f in uniq)
     fallback_score = int(round(MAX_POINTS * (1 - math.exp(-0.08 * total_weight))))
 
-    if has_cvss:
-        # Map CVSS 0-10 to 0-100
-        cvss_component = int(round((max_cvss / 10.0) * 100))
-        # Blend: prioritize max CVSS (impact), keep some volume effect
-        score = int(round(0.75 * cvss_component + 0.25 * fallback_score))
-    else:
+    if not has_cvss:
         score = fallback_score
+    else:
+        # CVSS-based: use average of top-N to reflect multiple big issues
+        # N=5 is stable and “minimal change” for small scanners
+        top_n = sorted(cvss_scores, reverse=True)[:5]
+        top_avg = sum(top_n) / len(top_n)
 
-    # Critical policy: if any finding is Critical OR CVSS max >= 9.0 => grade F, score >= 85
+        # Map 0-10 => 0-100
+        cvss_component = int(round((top_avg / 10.0) * 100))
+
+        # Small volume factor (prevents many medium issues being underrated)
+        # but CVSS remains primary driver.
+        score = int(round(0.85 * cvss_component + 0.15 * fallback_score))
+
+    score = int(min(100, max(0, score)))
+
+    # Critical forcing (kept)
     has_critical = counts["Critical"] > 0 or (max_cvss is not None and max_cvss >= 9.0)
-
     grade = _grade_from_score(score)
     if has_critical:
         grade = "F"
         score = max(score, 85)
 
-    # Top risks: prefer CVSS_score if available else severity weight
+    # Top risks: prefer CVSS_score else severity weight
     def risk_key(f: Dict[str, Any]) -> float:
         if "cvss_score" in f and isinstance(f["cvss_score"], (int, float)):
-            return float(f["cvss_score"]) + 10.0  # ensure CVSS outranks non-CVSS
-        return SEVERITY_WEIGHT.get(f["severity"], 0.5)
+            return float(f["cvss_score"]) + 10.0
+        return float(SEVERITY_WEIGHT.get(f["severity"], 0.5))
 
     top = sorted(uniq, key=risk_key, reverse=True)[:5]
     compact_top = []
@@ -247,7 +257,7 @@ def calculate_score(findings: List[Dict[str, Any]]) -> Dict[str, Any]:
         })
 
     return {
-        "score": int(min(100, max(0, score))),
+        "score": score,
         "grade": grade,
         "counts": dict(counts),
         "unique_findings": len(uniq),

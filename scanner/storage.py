@@ -1,12 +1,31 @@
 import sqlite3
 import json
 from datetime import datetime
+from pathlib import Path
+from typing import Any, Optional
 
 
 class Storage:
-    def __init__(self, db="scanner.db"):
-        self.conn = sqlite3.connect(db)
+    def __init__(self, db: str = "scanner.db"):
+        # Ensure parent folder exists (e.g., data/scanner.db)
+        db_path = Path(db)
+        if db_path.parent and str(db_path.parent) not in ("", "."):
+            db_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # SQLite connection
+        self.conn = sqlite3.connect(
+            str(db_path),
+            timeout=10,               # busy timeout for concurrent reads/writes
+            check_same_thread=False,  # safer if accessed across threads
+        )
         self.conn.row_factory = sqlite3.Row
+
+        # Pragmas (safe defaults for web apps)
+        self.conn.execute("PRAGMA journal_mode=WAL;")
+        self.conn.execute("PRAGMA synchronous=NORMAL;")
+        self.conn.execute("PRAGMA foreign_keys=ON;")
+        self.conn.execute("PRAGMA busy_timeout=5000;")
+
         self._create_tables()
 
     # -------------------------
@@ -39,23 +58,18 @@ class Storage:
     # -------------------------
     # Save Scan
     # -------------------------
-    def save_scan(self, target, score_data, findings, raw_json=None):
-        """
-        Saves scan summary + findings.
-        Compatible with old and new engine versions.
-        """
+    def save_scan(self, target: str, score_data: dict, findings: list[dict], raw_json: Optional[dict] = None) -> int:
         cursor = self.conn.cursor()
 
         cursor.execute(
             """
-            INSERT INTO scans
-            (target, score, grade, timestamp, raw_json)
+            INSERT INTO scans (target, score, grade, timestamp, raw_json)
             VALUES (?, ?, ?, ?, ?)
             """,
             (
                 target,
-                score_data.get("score", 0),
-                score_data.get("grade", "N/A"),
+                int(score_data.get("score", 0) or 0),
+                str(score_data.get("grade", "N/A")),
                 datetime.utcnow().isoformat(),
                 json.dumps(raw_json) if raw_json else None,
             )
@@ -63,11 +77,10 @@ class Storage:
 
         scan_id = cursor.lastrowid
 
-        for f in findings:
+        for f in findings or []:
             cursor.execute(
                 """
-                INSERT INTO findings
-                (scan_id, title, severity, description, metadata)
+                INSERT INTO findings (scan_id, title, severity, description, metadata)
                 VALUES (?, ?, ?, ?, ?)
                 """,
                 (
@@ -80,12 +93,12 @@ class Storage:
             )
 
         self.conn.commit()
-        return scan_id
+        return int(scan_id)
 
     # -------------------------
-    # Get Latest Scan (Elite Engine Support)
+    # Get Latest Scan
     # -------------------------
-    def get_latest_scan(self, target):
+    def get_latest_scan(self, target: str) -> Optional[dict]:
         cursor = self.conn.cursor()
 
         row = cursor.execute("""
@@ -98,9 +111,10 @@ class Storage:
         if not row:
             return None
 
-        if row["raw_json"]:
+        raw = row["raw_json"]
+        if raw:
             try:
-                return json.loads(row["raw_json"])
+                return json.loads(raw)
             except Exception:
                 pass
 
@@ -108,13 +122,13 @@ class Storage:
             "target": row["target"],
             "score": row["score"],
             "grade": row["grade"],
-            "timestamp": row["timestamp"]
+            "timestamp": row["timestamp"],
         }
 
     # -------------------------
     # Get Findings for Scan
     # -------------------------
-    def get_findings(self, scan_id):
+    def get_findings(self, scan_id: int) -> list[dict]:
         cursor = self.conn.cursor()
 
         rows = cursor.execute("""
@@ -122,19 +136,21 @@ class Storage:
             WHERE scan_id = ?
         """, (scan_id,)).fetchall()
 
-        findings = []
+        out = []
         for r in rows:
-            findings.append({
+            out.append({
                 "title": r["title"],
                 "severity": r["severity"],
                 "description": r["description"],
-                "metadata": json.loads(r["metadata"]) if r["metadata"] else {}
+                "metadata": json.loads(r["metadata"]) if r["metadata"] else {},
             })
-
-        return findings
+        return out
 
     # -------------------------
-    # Close DB
+    # Close
     # -------------------------
     def close(self):
-        self.conn.close()
+        try:
+            self.conn.close()
+        except Exception:
+            pass
