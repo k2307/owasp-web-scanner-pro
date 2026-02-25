@@ -358,14 +358,7 @@ details[open] summary{
   transition: width 220ms ease;
 }
 
-.hero{
-  display:flex;
-  justify-content:space-between;
-  gap:18px;
-  margin-bottom:18px;
-}
 .heroLeft{ flex: 1; }
-.heroRight{ width: min(420px, 100%); }
 
 .kicker{
   color:#9fffe8;
@@ -445,6 +438,21 @@ details[open] summary{
   margin-top:12px;
 }
 
+.topGrid{
+  display:grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap:22px;
+  align-items:start;
+  margin-bottom:18px;
+}
+
+.rightStack{
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+}
+
+/* Engine status centered inside card */
 .statusCenter{
   display:flex;
   flex-direction:column;
@@ -452,11 +460,21 @@ details[open] summary{
   justify-content:center;
   text-align:center;
   gap:8px;
-  height:100%;
+  min-height:110px;
 }
 
+/* Make sure the status card hugs the right column nicely */
 .statusCard{
-  display:flex;
-  align-items:center;
-  justify-content:center;
+  background:rgba(255,255,255,0.04);
+  border:1px solid rgba(150,180,255,0.15);
+  border-radius:16px;
+  padding:16px;
+  height:auto;
+}
+
+/* Responsive: stack on small screens */
+@media (max-width: 900px){
+  .topGrid{
+    grid-template-columns: 1fr;
+  }
 }
