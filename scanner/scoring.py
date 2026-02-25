@@ -182,10 +182,12 @@ def calculate_score(findings: List[Dict[str, Any]]) -> Dict[str, Any]:
 
     # Normalize + dedup
     unique: dict[Tuple[str, str, str], Dict[str, Any]] = {}
+    unique = {}
     for f in findings:
-        f = dict(f)
+        if not isinstance(f, dict):
+            continue
         f["severity"] = _norm_sev(f.get("severity"))
-        unique[_dedup_key(f)] = f
+        unique[_dedup_key(f)] = f  
 
     uniq = list(unique.values())
 

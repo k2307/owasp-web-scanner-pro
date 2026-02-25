@@ -26,7 +26,7 @@
       </div>
     </div>
 
-    <!-- LIVE FEED + PROGRESS (Always visible) -->
+    <!-- LIVE FEED -->
     <div class="panel">
       <div class="jobHeader" style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
         <div>
@@ -40,8 +40,8 @@
       </div>
 
       <div class="progressWrap" style="margin-top:10px;">
-        <div class="progressBar" style="height:10px;border-radius:999px;overflow:hidden;background:#0b1220;">
-          <div id="progressFill" class="progressFill" style="height:100%;width:0%;background:#2563eb;"></div>
+        <div class="progressBar">
+          <div id="progressFill" class="progressFill"></div>
         </div>
         <div style="display:flex;justify-content:space-between;margin-top:8px;">
           <span id="progressText" class="muted">Waiting…</span>
@@ -49,22 +49,8 @@
         </div>
       </div>
 
-      <pre id="liveFeed" class="output" style="max-height:280px;margin-top:12px;overflow:auto;"></pre>
+      <pre id="liveFeed" class="output" style="max-height:280px;margin-top:12px;"></pre>
     </div>
-
-    {% if job.status != "completed" and job.status != "failed" %}
-      <div class="panel">
-        <h2 class="h2">Scan in progress…</h2>
-        <p class="muted">This scan is still running/queued. Live feed will update automatically.</p>
-      </div>
-    {% endif %}
-
-    {% if job.status == "failed" %}
-      <div class="panel danger">
-        <h2 class="h2">Scan Failed</h2>
-        <pre class="output">{{ job.error }}</pre>
-      </div>
-    {% endif %}
 
     {% if job.status == "completed" %}
 
@@ -75,7 +61,7 @@
       {% set paths = result.get("attack_paths", []) %}
       {% set findings = result.get("findings", issues) %}
 
-      <!-- Summary row -->
+      <!-- SUMMARY -->
       <div class="grid">
 
         <div class="panel">
@@ -89,7 +75,6 @@
 
         <div class="panel">
           <h2 class="h2">Policy Decision</h2>
-
           {% set decision = (policy.get("decision","pass")|lower) %}
           <div class="big">
             {% if decision == "fail" %}
@@ -100,12 +85,6 @@
               <span class="badge ok">PASS</span>
             {% endif %}
           </div>
-
-          <ul class="muted">
-            {% for r in policy.get("reasons", []) %}
-              <li>{{ r }}</li>
-            {% endfor %}
-          </ul>
         </div>
 
         <div class="panel">
@@ -117,84 +96,11 @@
             <span class="sev low">Low: {{ counts.Low }}</span>
             <span class="sev info">Info: {{ counts.Info }}</span>
           </div>
-          <p class="muted">Counts reflect correlated findings.</p>
         </div>
 
       </div>
 
-      <!-- Diff / Regression -->
-      <div class="panel">
-        <h2 class="h2">Regression (Since Last Scan)</h2>
-
-        {% if diff %}
-          <div class="diffRow">
-            <div>
-              <b>Score delta:</b>
-              {% if diff.get("score_delta") is not none %}
-                {{ diff.get("score_delta") }}
-              {% else %}
-                N/A
-              {% endif %}
-            </div>
-            <div><b>New:</b> {{ (diff.get("new_findings") or [])|length }}</div>
-            <div><b>Resolved:</b> {{ (diff.get("resolved_findings") or [])|length }}</div>
-          </div>
-
-          {% if (diff.get("new_findings") or [])|length > 0 %}
-            <h3 class="h3">New findings</h3>
-            <ul>
-              {% for f in diff.get("new_findings", [])[:8] %}
-                <li><b>{{ f.title }}</b> <span class="badge small">{{ f.severity }}</span></li>
-              {% endfor %}
-            </ul>
-          {% endif %}
-
-          {% if (diff.get("resolved_findings") or [])|length > 0 %}
-            <h3 class="h3">Resolved findings</h3>
-            <ul>
-              {% for f in diff.get("resolved_findings", [])[:8] %}
-                <li><b>{{ f.title }}</b> <span class="badge small">{{ f.severity }}</span></li>
-              {% endfor %}
-            </ul>
-          {% endif %}
-
-          <p class="muted">Tip: persistence needs a Render Disk for real trending.</p>
-        {% else %}
-          <p class="muted">No previous scan available yet (first scan for this target).</p>
-        {% endif %}
-      </div>
-
-      <!-- Attack Paths -->
-      <div class="panel">
-        <h2 class="h2">Attack Paths (God Mode)</h2>
-
-        {% if paths and paths|length > 0 %}
-          {% for p in paths %}
-            <div class="card">
-              <div class="cardTop">
-                <h3 class="h3">{{ p.name }}</h3>
-                <span class="badge {% if p.risk|lower == 'critical' %}danger{% elif p.risk|lower == 'high' %}warn{% else %}ok{% endif %}">
-                  {{ p.risk }}
-                </span>
-              </div>
-
-              <p class="muted">{{ p.impact }}</p>
-
-              <ol class="steps">
-                {% for s in p.steps %}
-                  <li>{{ s }}</li>
-                {% endfor %}
-              </ol>
-
-              <p class="muted"><b>Confidence:</b> {{ p.confidence }}</p>
-            </div>
-          {% endfor %}
-        {% else %}
-          <p class="muted">No attack chains detected from current signals.</p>
-        {% endif %}
-      </div>
-
-      <!-- Findings List -->
+      <!-- FINDINGS -->
       <div class="panel">
         <h2 class="h2">Findings</h2>
 
@@ -206,8 +112,20 @@
                 <span class="badge small">{{ f.severity }}</span>
               </div>
 
+              <!-- 🔥 CVSS SCORE -->
+              {% if f.get("cvss_score") is not none %}
+                <p class="muted">
+                  <b>CVSS Score:</b>
+                  <code>{{ f.cvss_score }}</code>
+                </p>
+              {% endif %}
+
+              <!-- CVSS VECTOR -->
               {% if f.get("cvss_vector") %}
-                <p class="muted"><b>CVSS:</b> <code>{{ f.cvss_vector }}</code></p>
+                <p class="muted">
+                  <b>CVSS Vector:</b>
+                  <code>{{ f.cvss_vector }}</code>
+                </p>
               {% endif %}
 
               <p>{{ f.description }}</p>
@@ -229,7 +147,8 @@
     {% endif %}
   </div>
 
-  <script>
+<!-- (YOUR EXISTING JS — UNCHANGED) -->
+<script>
 (function(){
   const jobId = "{{ request.view_args['job_id'] }}";
   const feed = document.getElementById("liveFeed");
@@ -346,6 +265,7 @@
     line("[!] Live feed connection error (retrying automatically)...");
   };
 })();
-  </script>
+</script>
+
 </body>
 </html>
