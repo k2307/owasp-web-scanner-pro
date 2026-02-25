@@ -1,166 +1,167 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>OWASP Web Scanner Pro</title>
-  <link rel="stylesheet" href="/static/style.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OWASP Web Scanner Pro</title>
+<link rel="stylesheet" href="/static/style.css">
 </head>
+
 <body>
-  <div class="container">
+<div class="container">
 
-    <!-- HERO + RIGHT COLUMN STACK -->
-    <div class="hero">
+  <!-- TOP BAR -->
+  <div class="topBar">
+    <div class="brand">
+      <div class="kicker">OWASP Web Scanner Pro</div>
+      <h1 class="heroTitle">
+        Elite async scanning • attack-path correlation • CVSS scoring
+      </h1>
+    </div>
 
-      <!-- LEFT -->
-      <div class="heroLeft">
-        <div class="kicker">OWASP Web Scanner Pro</div>
-        <h1 class="heroTitle">Elite async scanning • attack-path correlation • CVSS scoring</h1>
-        <p class="heroSub muted">
-          Private scanner for authorized testing only. Non-destructive checks, deep crawling, modular plugins, JSON/HTML/PDF outputs.
-        </p>
+    <!-- SMALL STATUS BOX RIGHT -->
+    <div class="statusCard">
+      <div class="muted small">ENGINE STATUS</div>
+      <div id="engineStatusText" class="statusName">Ready</div>
+      <span id="statusBadge" class="badge idle">IDLE</span>
+    </div>
+  </div>
 
-        <div class="heroBadges">
-          <span class="pill">Async Modules</span>
-          <span class="pill">Plugin Loader</span>
-          <span class="pill">Diff + Policy</span>
-          <span class="pill">Attack Paths</span>
-          <span class="pill">Live Feed</span>
-        </div>
+  <!-- CENTER TARGET PANEL -->
+  <div class="panel centerPanel">
+
+    <p class="heroSub muted">
+      Private scanner for authorized testing only. Non-destructive checks,
+      deep crawling, modular plugins, JSON/HTML/PDF outputs.
+    </p>
+
+    <div class="heroBadges">
+      <span class="pill">Async Modules</span>
+      <span class="pill">Plugin Loader</span>
+      <span class="pill">Diff + Policy</span>
+      <span class="pill">Attack Paths</span>
+      <span class="pill">Live Feed</span>
+    </div>
+
+    <form id="scanForm" class="form">
+
+      <!-- TARGET CENTERED -->
+      <div class="targetCenter">
+        <label class="label centerLabel">Target URL</label>
+        <input class="input bigInput"
+               name="target"
+               placeholder="https://example.com"
+               required>
+        <div class="hint muted">Example: https://india.gov.in</div>
       </div>
 
-      <!-- RIGHT -->
-      <div class="heroRight">
+      <!-- OPTIONS -->
+      <div class="formRow">
 
-        <div class="rightStack">
+        <div class="colFixed">
+          <label class="label">Output</label>
+          <select class="select" name="output_format">
+            <option value="json">JSON</option>
+            <option value="html">HTML</option>
+            <option value="pdf">PDF</option>
+          </select>
+        </div>
 
-          <!-- ENGINE STATUS (small square pinned top-right) -->
-          <div class="statusRow">
-            <div class="statusSquare">
-              <div class="muted small">ENGINE STATUS</div>
-              <div id="engineStatusText" class="statusName">Ready</div>
-              <span id="statusBadge" class="badge idle">IDLE</span>
-            </div>
-          </div>
-
-          <!-- INPUT PANEL -->
-          <div class="panel">
-            <form id="scanForm" class="form">
-              <div class="formRow">
-                <div class="colGrow">
-                  <label class="label">Target URL</label>
-                  <input class="input" name="target" placeholder="https://example.com" required>
-                  <div class="hint muted">Example: https://india.gov.in</div>
-                </div>
-
-                <div class="colFixed">
-                  <label class="label">Output</label>
-                  <select class="select" name="output_format">
-                    <option value="json">JSON</option>
-                    <option value="html">HTML</option>
-                    <option value="pdf">PDF</option>
-                  </select>
-                  <div class="hint muted">PDF enables download</div>
-                </div>
-
-                <div class="colFixed">
-                  <label class="label">Profile</label>
-                  <select class="select" name="profile">
-                    <option value="fast">Fast</option>
-                    <option value="normal" selected>Normal</option>
-                    <option value="aggressive">Aggressive</option>
-                  </select>
-                  <div id="profileHint" class="hint muted">Balanced depth + speed</div>
-                </div>
-              </div>
-
-              <div class="actions">
-                <button id="startBtn" class="btn primary" type="submit">Start Scan</button>
-                <button id="resetBtn" class="btn" type="button">Reset</button>
-                <label class="toggle">
-                  <input id="autoOpen" type="checkbox" checked>
-                  <span>Auto-open results on completion</span>
-                </label>
-              </div>
-
-              <p class="disclaimer">
-                ⚠️ Authorized testing only. You must own the target or have explicit written permission.
-              </p>
-
-              <div id="formError" class="errorBox hidden"></div>
-            </form>
-          </div>
-
-        </div><!-- /rightStack -->
-      </div><!-- /heroRight -->
-    </div><!-- /hero -->
-
-    <!-- JOB PANEL -->
-    <div id="jobPanel" class="panel hidden">
-      <div class="jobHeader">
-        <div>
-          <h2 class="h2">Scan Job</h2>
-          <div class="jobLine muted">
-            Job ID: <span id="jobIdText">-</span>
-            <button id="copyJobBtn" class="btn smallBtn" type="button">Copy</button>
+        <div class="colFixed">
+          <label class="label">Profile</label>
+          <select class="select" name="profile">
+            <option value="fast">Fast</option>
+            <option value="normal" selected>Normal</option>
+            <option value="aggressive">Aggressive</option>
+          </select>
+          <div id="profileHint" class="hint muted">
+            Balanced depth + speed
           </div>
         </div>
 
-        <div class="jobActions">
-          <a id="openUiBtn" class="btn" href="#" target="_blank">Open Results</a>
-          <a id="downloadPdfBtn" class="btn disabled" href="#" target="_blank">Download PDF</a>
+      </div>
+
+      <div class="actions">
+        <button id="startBtn" class="btn primary" type="submit">Start Scan</button>
+        <button id="resetBtn" class="btn" type="button">Reset</button>
+
+        <label class="toggle">
+          <input id="autoOpen" type="checkbox" checked>
+          <span>Auto-open results on completion</span>
+        </label>
+      </div>
+
+      <p class="disclaimer">
+        ⚠️ Authorized testing only. You must own the target or have permission.
+      </p>
+
+      <div id="formError" class="errorBox hidden"></div>
+    </form>
+  </div>
+
+  <!-- JOB PANEL -->
+  <div id="jobPanel" class="panel hidden">
+
+    <div class="jobHeader">
+      <div>
+        <h2 class="h2">Scan Job</h2>
+        <div class="jobLine muted">
+          Job ID: <span id="jobIdText">-</span>
+          <button id="copyJobBtn" class="btn smallBtn" type="button">Copy</button>
         </div>
       </div>
 
-      <div class="progressWrap">
-        <div class="progressBar"><div id="progressFill" class="progressFill"></div></div>
-        <div class="progressMeta">
-          <span id="progressText" class="muted">Waiting…</span>
-          <span id="timerText" class="muted">00:00</span>
-        </div>
-      </div>
-
-      <div class="tabs">
-        <button class="tab active" data-tab="summary">Summary</button>
-        <button class="tab" data-tab="raw">Raw JSON</button>
-        <button class="tab" data-tab="live">Live Feed</button>
-        <button id="copyJsonBtn" class="btn smallBtn" type="button">Copy JSON</button>
-      </div>
-
-      <div id="tab-summary" class="tabPane">
-        <div class="summaryGrid">
-          <div class="miniCard">
-            <div class="muted small">STATUS</div>
-            <div id="miniStatus" class="miniValue">—</div>
-          </div>
-          <div class="miniCard">
-            <div class="muted small">PROFILE</div>
-            <div id="miniProfile" class="miniValue">—</div>
-          </div>
-          <div class="miniCard">
-            <div class="muted small">OUTPUT</div>
-            <div id="miniOutput" class="miniValue">—</div>
-          </div>
-        </div>
-
-        <div class="muted small" style="margin-top:10px;">
-          Note: In-memory jobs reset if the service restarts. Set <code>WEB_CONCURRENCY=1</code> on Render.
-        </div>
-      </div>
-
-      <div id="tab-raw" class="tabPane hidden">
-        <pre id="out" class="output"></pre>
-      </div>
-
-      <div id="tab-live" class="tabPane hidden">
-        <div class="muted small" style="margin-bottom:8px;">
-          Live events stream (requires backend <code>/events/&lt;job_id&gt;</code> SSE).
-        </div>
-        <pre id="liveFeed" class="output" style="max-height:260px;"></pre>
+      <div class="jobActions">
+        <a id="openUiBtn" class="btn" href="#" target="_blank">Open Results</a>
+        <a id="downloadPdfBtn" class="btn disabled" href="#" target="_blank">Download PDF</a>
       </div>
     </div>
 
+    <div class="progressWrap">
+      <div class="progressBar">
+        <div id="progressFill" class="progressFill"></div>
+      </div>
+      <div class="progressMeta">
+        <span id="progressText" class="muted">Waiting…</span>
+        <span id="timerText" class="muted">00:00</span>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="summary">Summary</button>
+      <button class="tab" data-tab="raw">Raw JSON</button>
+      <button class="tab" data-tab="live">Live Feed</button>
+      <button id="copyJsonBtn" class="btn smallBtn" type="button">Copy JSON</button>
+    </div>
+
+    <div id="tab-summary" class="tabPane">
+      <div class="summaryGrid">
+        <div class="miniCard">
+          <div class="muted small">STATUS</div>
+          <div id="miniStatus" class="miniValue">—</div>
+        </div>
+        <div class="miniCard">
+          <div class="muted small">PROFILE</div>
+          <div id="miniProfile" class="miniValue">—</div>
+        </div>
+        <div class="miniCard">
+          <div class="muted small">OUTPUT</div>
+          <div id="miniOutput" class="miniValue">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-raw" class="tabPane hidden">
+      <pre id="out" class="output"></pre>
+    </div>
+
+    <div id="tab-live" class="tabPane hidden">
+      <pre id="liveFeed" class="output" style="max-height:260px;"></pre>
+    </div>
+
   </div>
+
+</div>
 
 <script>
 const statusBadge = document.getElementById("statusBadge");
