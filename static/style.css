@@ -444,3 +444,19 @@ details[open] summary{
 .tabPane{
   margin-top:12px;
 }
+
+.statusCenter{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  gap:8px;
+  height:100%;
+}
+
+.statusCard{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
