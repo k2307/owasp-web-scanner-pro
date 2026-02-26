@@ -101,13 +101,16 @@ code{
 /* ===== Hero layout ===== */
 .hero{
   display:flex;
-  justify-content:space-between;
   align-items:flex-start;
+  justify-content:space-between;
   gap:24px;
-  margin-bottom:18px;
+  flex-wrap:nowrap;
 }
 
-.heroLeft{ flex:1; }
+.heroLeft{
+  flex:1;
+  min-width:0;        /* prevents overflow pushing right side down */
+}
 
 .kicker{
   color:#9fffe8;
@@ -148,6 +151,10 @@ code{
 /* ===== RIGHT SIDE ===== */
 .heroRight{
   width:min(520px,100%);
+  flex:0 0 auto;
+  display:flex;
+  justify-content:flex-end;
+  align-items:flex-start;
 }
 
 .rightStack{
