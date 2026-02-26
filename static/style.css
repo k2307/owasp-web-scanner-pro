@@ -104,12 +104,12 @@ code{
   align-items:flex-start;
   justify-content:space-between;
   gap:24px;
-  flex-wrap:nowrap;
+  flex-wrap:nowrap;          /* IMPORTANT: keep right side beside left */
 }
 
 .heroLeft{
   flex:1;
-  min-width:0;        /* prevents overflow pushing right side down */
+  min-width:0;               /* IMPORTANT: stops overflow pushing right down */
 }
 
 .kicker{
@@ -148,25 +148,18 @@ code{
   color:#9fffe8;
 }
 
-/* ===== RIGHT SIDE ===== */
+/* ===== RIGHT SIDE (engine status square pinned top-right) ===== */
 .heroRight{
-  width:min(520px,100%);
   flex:0 0 auto;
   display:flex;
   justify-content:flex-end;
   align-items:flex-start;
 }
 
-.rightStack{
-  display:flex;
-  flex-direction:column;
-  gap:16px;
-}
-
-/* ===== STATUS SMALL SQUARE ===== */
 .statusRow{
   display:flex;
   justify-content:flex-end;
+  width:100%;
 }
 
 .statusSquare{
@@ -183,6 +176,7 @@ code{
   text-align:center;
   gap:8px;
   box-shadow:var(--shadow);
+  backdrop-filter:blur(6px);
 }
 
 .statusName{
@@ -262,11 +256,7 @@ code{
 .progressFill{
   height:100%;
   width:0%;
-  background:linear-gradient(
-    90deg,
-    rgba(0,255,200,.2),
-    rgba(0,108,255,.35)
-  );
+  background:linear-gradient(90deg, rgba(0,255,200,.2), rgba(0,108,255,.35));
   transition:width .2s ease;
 }
 
@@ -311,3 +301,21 @@ code{
 
 /* ===== Helpers ===== */
 .hidden{ display:none; }
+
+/* ===== Mobile ===== */
+@media (max-width: 900px){
+  .hero{
+    flex-direction:column;
+    flex-wrap:wrap;
+  }
+  .heroRight{
+    justify-content:flex-start;
+    width:100%;
+  }
+  .statusSquare{
+    width:100%;
+    height:auto;
+    align-items:flex-start;
+    text-align:left;
+  }
+}
