@@ -425,6 +425,17 @@ code{
   color:#cfe2ff;
 }
 
+.disclaim{
+  margin-top:14px;
+  padding:10px 12px;
+  border-radius:12px;
+  border:1px solid rgba(255,190,60,.25);
+  background:rgba(255,190,60,.10);
+  color:#ffe1a8;
+  font-weight:700;
+  text-align: center;
+}
+
 .disclaimer{
   margin-top:14px;
   padding:10px 12px;
