@@ -47,6 +47,12 @@ body:before{
   justify-content:center;
 }
 
+.container1{
+  width:min(1100px,92%);
+  margin:40px auto;
+  position:relative;
+}
+
 /* ===== Login Mode ===== */
 .loginPanel{
   max-width:420px;
