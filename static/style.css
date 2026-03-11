@@ -114,6 +114,8 @@ code{
   margin-top:8px;
   max-width:720px;
   text-align: center;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 /* ===== Hero badges ===== */
