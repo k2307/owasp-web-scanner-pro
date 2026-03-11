@@ -72,12 +72,6 @@ body:before{
   color:var(--muted);
 }
 
-.muted1{
-  color:var(--muted);
-  align-items:center;
-  justify-content:center;
-}
-
 .small{
   font-size:12px;
 }
@@ -118,6 +112,13 @@ code{
 .heroSub{
   margin-top:8px;
   max-width:720px;
+}
+
+.heroSub1{
+  margin-top:8px;
+  max-width:720px;
+  align-items:center;
+  justify-content:center;
 }
 
 /* ===== Hero badges ===== */
