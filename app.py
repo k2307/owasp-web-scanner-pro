@@ -47,21 +47,6 @@ MAX_RUNNING_SCANS = 10
 # Helpers
 # -------------------------
 
-def has_access():
-    token = os.environ.get("ACCESS_TOKEN")
-    if not token:
-        return True  # allow if token not configured
-
-    if session.get("access_granted"):
-        return True
-
-    req_token = request.args.get("key")
-    if req_token and req_token == token:
-        session["access_granted"] = True
-        return True
-
-    return False
-
 def get_client_ip():
     xff = request.headers.get("X-Forwarded-For")
     if xff:
@@ -230,14 +215,6 @@ def _count_severity(findings: list[dict]):
 # Security Headers
 # -------------------------
 
-@app.before_request
-def access_gate():
-    if request.path.startswith("/health"):
-        return
-
-    if not has_access():
-        return ("Not Found", 404)
-    
 @app.after_request
 def add_security_headers(resp):
     resp.headers["X-Frame-Options"] = "DENY"
@@ -250,11 +227,6 @@ def add_security_headers(resp):
 # -------------------------
 # Routes
 # -------------------------
-
-@app.get("/health")
-def health():
-    return "OK", 200
-
 
 @app.get("/")
 def home():

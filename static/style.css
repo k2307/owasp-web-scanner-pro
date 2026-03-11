@@ -39,15 +39,21 @@ body:before{
 
 .container{
   width:min(1100px,92%);
-  margin:40px auto;
-  align-self: center;
+  margin:auto;
   position:relative;
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
 }
 
 /* ===== Login Mode ===== */
 .loginPanel{
-  max-width:480px;
-  margin:80px auto;
+  max-width:420px;
+  width: 100%;
+  box-shadow:
+    0 0 25px rgba(0,255,200,0.15),
+    0 10px 30px rgba(0,0,0,0.35);
 }
 
 /* ===== Typography ===== */
