@@ -40,6 +40,7 @@ body:before{
 .container{
   width:min(1100px,92%);
   margin:40px auto;
+  align-self: center;
   position:relative;
 }
 
