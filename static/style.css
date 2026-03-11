@@ -116,14 +116,6 @@ code{
   text-align: center;
 }
 
-.heroSub1{
-  margin-top:8px;
-  max-width:720px;
-  margin-left: auto;
-  margin-right: auto;
-  text-align:center;
-}
-
 /* ===== Hero badges ===== */
 .heroBadges{
   display:flex;
