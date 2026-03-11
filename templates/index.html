@@ -1,13 +1,47 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>OWASP Web Scanner Pro</title>
-<link rel="stylesheet" href="/static/style.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OWASP Web Scanner Pro</title>
+  <link rel="stylesheet" href="/static/style.css">
 </head>
-
 <body>
+
+{% if not authenticated %}
+
+<div class="container">
+  <div class="panel loginPanel">
+    <div class="kicker">OWASP Web Scanner Pro</div>
+    <h1 class="heroTitle">Secure Access Required</h1>
+    <p class="heroSub muted">
+      Sign in to access the scanner dashboard.
+    </p>
+
+    <form method="post" action="/login" class="form">
+      <label class="label">Username</label>
+      <input class="input" type="text" name="username" autocomplete="username" required>
+
+      <label class="label" style="margin-top:14px;">Password</label>
+      <input class="input" type="password" name="password" autocomplete="current-password" required>
+
+      {% if login_error %}
+        <div id="formError" class="errorBox" style="margin-top:14px;">{{ login_error }}</div>
+      {% endif %}
+
+      <div class="actions">
+        <button class="btn primary" type="submit">Sign In</button>
+      </div>
+
+      <p class="disclaimer">
+        Private access only. Unauthorized use is prohibited.
+      </p>
+    </form>
+  </div>
+</div>
+
+{% else %}
+
 <div class="container">
 
   <!-- TOP BAR -->
@@ -19,19 +53,23 @@
       </h1>
     </div>
 
-  <div class="heroRight">
-  <div class="statusRow">
-    <div class="statusSquare">
-      <div class="muted small">ENGINE STATUS</div>
-      <div id="engineStatusText" class="statusName">Ready</div>
-      <span id="statusBadge" class="badge idle">IDLE</span>
+    <div class="heroRight">
+      <div class="statusRow">
+        <div class="statusSquare">
+          <div class="muted small">ENGINE STATUS</div>
+          <div id="engineStatusText" class="statusName">Ready</div>
+          <span id="statusBadge" class="badge idle">IDLE</span>
+        </div>
+      </div>
     </div>
   </div>
 
-</div>
-
   <!-- CENTER TARGET PANEL -->
   <div class="panel centerPanel">
+
+    <div class="jobActions" style="justify-content:flex-end; margin-bottom:12px;">
+      <a class="btn" href="/logout">Logout</a>
+    </div>
 
     <p class="heroSub muted">
       Private scanner for authorized testing only. Non-destructive checks,
@@ -48,19 +86,18 @@
 
     <form id="scanForm" class="form">
 
-      <!-- TARGET CENTERED -->
       <div class="targetCenter">
         <label class="label centerLabel">Target URL</label>
-        <input class="input bigInput"
-               name="target"
-               placeholder="https://example.com"
-               required>
+        <input
+          class="input bigInput"
+          name="target"
+          placeholder="https://example.com"
+          required
+        >
         <div class="hint muted">Example: https://india.gov.in</div>
       </div>
 
-      <!-- OPTIONS -->
       <div class="formRow">
-
         <div class="colFixed">
           <label class="label">Output</label>
           <select class="select" name="output_format">
@@ -81,7 +118,6 @@
             Balanced depth + speed
           </div>
         </div>
-
       </div>
 
       <div class="actions">
@@ -104,7 +140,6 @@
 
   <!-- JOB PANEL -->
   <div id="jobPanel" class="panel hidden">
-
     <div class="jobHeader">
       <div>
         <h2 class="h2">Scan Job</h2>
@@ -161,7 +196,6 @@
     <div id="tab-live" class="tabPane hidden">
       <pre id="liveFeed" class="output" style="max-height:260px;"></pre>
     </div>
-
   </div>
 
 </div>
@@ -453,5 +487,7 @@ document.getElementById("scanForm").addEventListener("submit", async (e) => {
 
 resetUI();
 </script>
+
+{% endif %}
 </body>
 </html>

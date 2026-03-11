@@ -43,73 +43,43 @@ body:before{
   position:relative;
 }
 
+/* ===== Login Mode ===== */
+.loginPanel{
+  max-width:480px;
+  margin:80px auto;
+}
+
 /* ===== Typography ===== */
-.title{ margin:0; color:var(--neon); }
-.muted{ color:var(--muted); }
+.title{
+  margin:0;
+  color:var(--neon);
+}
+
+.muted{
+  color:var(--muted);
+}
+
+.small{
+  font-size:12px;
+}
 
 code{
   color:#9fffe8;
   font-family:ui-monospace,monospace;
 }
 
-/* ===== Buttons ===== */
-.btn{
-  padding:10px 14px;
-  background:#1a2550;
-  border:1px solid #2c3a7a;
-  color:var(--fg);
-  border-radius:12px;
-  font-weight:700;
-  text-decoration:none;
-  display:inline-flex;
-  align-items:center;
-  gap:8px;
-  transition:.2s;
-}
-
-.btn:hover{
-  background:#22306b;
-  transform:translateY(-1px);
-}
-
-.btn.primary{
-  background:var(--blue);
-  border-color:#2b7dff;
-}
-.btn.primary:hover{ background:#165bff; }
-
-.btn.disabled{
-  opacity:.45;
-  pointer-events:none;
-}
-
-/* ===== Panels ===== */
-.panel{
-  background:var(--panel);
-  border:1px solid var(--panelBorder);
-  border-radius:var(--radius);
-  padding:18px;
-  margin:16px 0;
-  box-shadow:var(--shadow);
-  backdrop-filter:blur(6px);
-}
-
-.panel.danger{
-  border-color:rgba(255,80,80,.25);
-}
-
-/* ===== Hero layout ===== */
-.hero{
+/* ===== Top bar ===== */
+.topBar{
   display:flex;
-  align-items:flex-start;
   justify-content:space-between;
+  align-items:flex-start;
   gap:24px;
-  flex-wrap:nowrap;          /* IMPORTANT: keep right side beside left */
+  margin-bottom:18px;
 }
 
-.heroLeft{
+.brand{
   flex:1;
-  min-width:0;               /* IMPORTANT: stops overflow pushing right down */
+  min-width:0;
 }
 
 .kicker{
@@ -131,11 +101,14 @@ code{
   max-width:720px;
 }
 
+/* ===== Hero badges ===== */
 .heroBadges{
   display:flex;
   gap:10px;
   flex-wrap:wrap;
+  justify-content:center;
   margin-top:12px;
+  margin-bottom:10px;
 }
 
 .pill{
@@ -148,7 +121,7 @@ code{
   color:#9fffe8;
 }
 
-/* ===== RIGHT SIDE (engine status square pinned top-right) ===== */
+/* ===== Right side engine status ===== */
 .heroRight{
   flex:0 0 auto;
   display:flex;
@@ -184,12 +157,124 @@ code{
   font-weight:900;
 }
 
-/* ===== BADGES ===== */
+/* ===== Buttons ===== */
+.btn{
+  padding:10px 14px;
+  background:#1a2550;
+  border:1px solid #2c3a7a;
+  color:var(--fg);
+  border-radius:12px;
+  font-weight:700;
+  text-decoration:none;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  transition:.2s;
+  cursor:pointer;
+}
+
+.btn:hover{
+  background:#22306b;
+  transform:translateY(-1px);
+}
+
+.btn.primary{
+  background:var(--blue);
+  border-color:#2b7dff;
+}
+
+.btn.primary:hover{
+  background:#165bff;
+}
+
+.btn.disabled{
+  opacity:.45;
+  pointer-events:none;
+}
+
+/* ===== Panels ===== */
+.panel{
+  background:var(--panel);
+  border:1px solid var(--panelBorder);
+  border-radius:var(--radius);
+  padding:18px;
+  margin:16px 0;
+  box-shadow:var(--shadow);
+  backdrop-filter:blur(6px);
+}
+
+.panel.danger{
+  border-color:rgba(255,80,80,.25);
+}
+
+.centerPanel{
+  text-align:center;
+}
+
+.h2{
+  margin:0 0 10px 0;
+  font-size:20px;
+  color:var(--neon);
+}
+
+.h3{
+  margin:0;
+  font-size:16px;
+  color:#d8f7ff;
+}
+
+.big{
+  font-size:34px;
+  font-weight:900;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin:6px 0 8px;
+}
+
+/* ===== Job header / actions ===== */
+.header{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:18px;
+  margin-bottom:18px;
+}
+
+.jobHeader{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:14px;
+  flex-wrap:wrap;
+}
+
+.jobActions{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+.jobLine{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-top:6px;
+}
+
+/* ===== Badges ===== */
 .badge{
   padding:6px 10px;
   border-radius:999px;
   font-weight:900;
   font-size:12px;
+}
+
+.badge.small{
+  font-size:11px;
+  padding:4px 8px;
 }
 
 .badge.idle{ background:rgba(150,180,255,.08); color:#cfe2ff; }
@@ -198,15 +283,76 @@ code{
 .badge.completed{ background:rgba(0,255,200,.10); color:#9fffe8; }
 .badge.failed{ background:rgba(255,80,80,.12); color:#ffb3b3; }
 
-/* ===== FORM ===== */
+.badge.ok{
+  border:1px solid rgba(0,255,200,.25);
+  background:rgba(0,255,200,.08);
+  color:#9fffe8;
+}
+
+.badge.warn{
+  border:1px solid rgba(255,190,60,.35);
+  background:rgba(255,190,60,.12);
+  color:#ffe1a8;
+}
+
+.badge.danger{
+  border:1px solid rgba(255,80,80,.35);
+  background:rgba(255,80,80,.12);
+  color:#ffb3b3;
+}
+
+/* ===== Severity chips ===== */
+.sevRow{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  margin-top:8px;
+}
+
+.sev{
+  padding:6px 10px;
+  border-radius:999px;
+  font-weight:900;
+  font-size:12px;
+  border:1px solid rgba(255,255,255,.08);
+  background:rgba(255,255,255,.04);
+}
+
+.sev.critical{ border-color:rgba(255,80,80,.40); color:#ffb3b3; }
+.sev.high{ border-color:rgba(255,120,80,.35); color:#ffd2c2; }
+.sev.med{ border-color:rgba(255,190,60,.35); color:#ffe1a8; }
+.sev.low{ border-color:rgba(255,255,120,.25); color:#fff3b0; }
+.sev.info{ border-color:rgba(150,180,255,.25); color:#cfe2ff; }
+
+/* ===== Form ===== */
+.form{
+  width:100%;
+}
+
 .formRow{
   display:flex;
   gap:14px;
   flex-wrap:wrap;
+  justify-content:center;
 }
 
-.colGrow{ flex:1; min-width:260px; }
-.colFixed{ width:220px; }
+.targetCenter{
+  max-width:720px;
+  margin:0 auto 16px;
+}
+
+.centerLabel{
+  text-align:center;
+}
+
+.colGrow{
+  flex:1;
+  min-width:260px;
+}
+
+.colFixed{
+  width:220px;
+}
 
 .label{
   display:block;
@@ -222,17 +368,39 @@ code{
   border:1px solid rgba(150,180,255,.18);
   background:rgba(0,0,0,.25);
   color:var(--fg);
+  outline:none;
+}
+
+.bigInput{
+  font-size:18px;
+  text-align:center;
+  padding:14px;
 }
 
 .input:focus,.select:focus{
   border-color:rgba(0,255,200,.35);
 }
 
+.hint{
+  margin-top:6px;
+  font-size:12px;
+}
+
 .actions{
   display:flex;
   gap:12px;
   flex-wrap:wrap;
+  justify-content:center;
   margin-top:14px;
+}
+
+.toggle{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  user-select:none;
+  font-weight:700;
+  color:#cfe2ff;
 }
 
 .disclaimer{
@@ -245,12 +413,27 @@ code{
   font-weight:700;
 }
 
+.errorBox{
+  margin-top:12px;
+  padding:10px 12px;
+  border-radius:12px;
+  border:1px solid rgba(255,80,80,.35);
+  background:rgba(255,80,80,.10);
+  color:#ffb3b3;
+  font-weight:700;
+}
+
 /* ===== Progress ===== */
+.progressWrap{
+  margin-top:10px;
+}
+
 .progressBar{
   height:12px;
   border-radius:999px;
   background:rgba(255,255,255,.06);
   overflow:hidden;
+  border:1px solid rgba(150,180,255,.12);
 }
 
 .progressFill{
@@ -264,6 +447,7 @@ code{
   display:flex;
   justify-content:space-between;
   margin-top:8px;
+  gap:10px;
 }
 
 /* ===== Tabs ===== */
@@ -271,6 +455,7 @@ code{
   display:flex;
   gap:10px;
   margin-top:14px;
+  flex-wrap:wrap;
 }
 
 .tab{
@@ -278,6 +463,7 @@ code{
   border-radius:10px;
   background:#1a2550;
   border:1px solid #2c3a7a;
+  color:var(--fg);
   cursor:pointer;
 }
 
@@ -286,7 +472,83 @@ code{
   border-color:rgba(0,255,200,.25);
 }
 
-.tabPane{ margin-top:12px; }
+.tabPane{
+  margin-top:12px;
+}
+
+/* ===== Cards / Grid ===== */
+.grid{
+  display:grid;
+  grid-template-columns:repeat(3, 1fr);
+  gap:16px;
+}
+
+.card{
+  background:rgba(255,255,255,.03);
+  border:1px solid rgba(130,150,255,.14);
+  border-radius:14px;
+  padding:14px;
+  margin-top:12px;
+}
+
+.cardTop{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:6px;
+}
+
+.summaryGrid{
+  display:grid;
+  grid-template-columns:repeat(3, 1fr);
+  gap:12px;
+}
+
+.miniCard{
+  background:rgba(255,255,255,.03);
+  border:1px solid rgba(150,180,255,.14);
+  border-radius:12px;
+  padding:12px;
+}
+
+.miniValue{
+  font-size:20px;
+  font-weight:900;
+  margin-top:4px;
+}
+
+/* ===== Details / lists ===== */
+details{
+  margin-top:10px;
+  border-radius:12px;
+  border:1px solid rgba(150,180,255,.12);
+  background:rgba(0,0,0,.18);
+  padding:10px 12px;
+}
+
+summary{
+  cursor:pointer;
+  user-select:none;
+  font-weight:800;
+  color:#cfe2ff;
+  list-style:none;
+}
+
+summary::-webkit-details-marker{
+  display:none;
+}
+
+.steps{
+  margin:8px 0 0 18px;
+}
+
+.diffRow{
+  display:flex;
+  gap:18px;
+  flex-wrap:wrap;
+  margin:8px 0;
+}
 
 /* ===== Output ===== */
 .output{
@@ -296,26 +558,52 @@ code{
   border-radius:12px;
   overflow:auto;
   max-height:380px;
+  line-height:1.45;
   font-size:12px;
+  font-family:ui-monospace,monospace;
 }
 
 /* ===== Helpers ===== */
-.hidden{ display:none; }
+.hidden{
+  display:none;
+}
 
 /* ===== Mobile ===== */
 @media (max-width: 900px){
-  .hero{
+  .topBar{
     flex-direction:column;
-    flex-wrap:wrap;
   }
+
   .heroRight{
-    justify-content:flex-start;
     width:100%;
+    justify-content:flex-start;
   }
+
+  .statusRow{
+    justify-content:flex-start;
+  }
+
   .statusSquare{
     width:100%;
     height:auto;
     align-items:flex-start;
+    text-align:left;
+  }
+
+  .grid,
+  .summaryGrid{
+    grid-template-columns:1fr;
+  }
+
+  .colFixed{
+    width:100%;
+  }
+
+  .targetCenter{
+    max-width:100%;
+  }
+
+  .bigInput{
     text-align:left;
   }
 }

@@ -1,16 +1,26 @@
+import os
 import time
 import uuid
 import threading
 import asyncio
 import json
 from collections import deque
+from functools import wraps
 from typing import Dict, Any
 
-from flask import Flask, request, jsonify, render_template, Response
+from flask import Flask, request, jsonify, render_template, Response, session, redirect, url_for
+from werkzeug.security import check_password_hash
 
 from scanner.engine import ScannerEngine
 
 app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", "change-this-in-render")
+
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=True,   # keep True on Render HTTPS
+)
 
 SCAN_JOBS: Dict[str, Dict[str, Any]] = {}
 SCAN_LOCK = threading.Lock()
@@ -18,20 +28,97 @@ SCAN_LOCK = threading.Lock()
 RATE_LIMIT_SECONDS = 10
 REQUEST_TIMESTAMPS: Dict[str, float] = {}
 JOB_TTL_SECONDS = 60 * 30
+EVENTS_MAXLEN = 400
 
-EVENTS_MAXLEN = 400  # keep last N events per job
+# Login protection
+LOGIN_ATTEMPTS: Dict[str, Dict[str, Any]] = {}
+MAX_LOGIN_ATTEMPTS = 5
+LOCKOUT_SECONDS = 15 * 60
+
+# Extra login rate limit
+LOGIN_RATE_LIMIT_SECONDS = 5
+LAST_LOGIN_ATTEMPT: Dict[str, float] = {}
+
+# Scan abuse control
+MAX_RUNNING_SCANS = 10
 
 
 # -------------------------
 # Helpers
 # -------------------------
 
+def has_access():
+    token = os.environ.get("ACCESS_TOKEN")
+    if not token:
+        return True  # allow if token not configured
+
+    if session.get("access_granted"):
+        return True
+
+    req_token = request.args.get("key")
+    if req_token and req_token == token:
+        session["access_granted"] = True
+        return True
+
+    return False
+
 def get_client_ip():
-    # Render uses proxy headers sometimes
     xff = request.headers.get("X-Forwarded-For")
     if xff:
         return xff.split(",")[0].strip()
     return request.remote_addr or "unknown"
+
+
+def is_logged_in() -> bool:
+    return session.get("authenticated") is True
+
+
+def login_required(view_func):
+    @wraps(view_func)
+    def wrapped(*args, **kwargs):
+        if not is_logged_in():
+            return redirect(url_for("home"))
+        return view_func(*args, **kwargs)
+    return wrapped
+
+
+def _get_login_state(ip: str):
+    now = time.time()
+    state = LOGIN_ATTEMPTS.get(ip)
+    if not state:
+        state = {"count": 0, "locked_until": 0}
+        LOGIN_ATTEMPTS[ip] = state
+
+    if state["locked_until"] and now >= state["locked_until"]:
+        state["count"] = 0
+        state["locked_until"] = 0
+
+    return state
+
+
+def is_locked_out(ip: str) -> bool:
+    state = _get_login_state(ip)
+    return time.time() < state["locked_until"]
+
+
+def record_failed_login(ip: str):
+    state = _get_login_state(ip)
+    state["count"] += 1
+    if state["count"] >= MAX_LOGIN_ATTEMPTS:
+        state["locked_until"] = time.time() + LOCKOUT_SECONDS
+
+
+def clear_login_failures(ip: str):
+    LOGIN_ATTEMPTS[ip] = {"count": 0, "locked_until": 0}
+
+
+def check_login_rate_limit(ip: str) -> bool:
+    now = time.time()
+    last = LAST_LOGIN_ATTEMPT.get(ip)
+    if last and now - last < LOGIN_RATE_LIMIT_SECONDS:
+        return False
+    LAST_LOGIN_ATTEMPT[ip] = now
+    return True
 
 
 def check_rate_limit(ip: str) -> bool:
@@ -58,9 +145,6 @@ def cleanup_jobs():
 
 
 def push_event(job_id: str, payload: dict):
-    """
-    Thread-safe event push into per-job deque.
-    """
     with SCAN_LOCK:
         job = SCAN_JOBS.get(job_id)
         if not job:
@@ -73,10 +157,6 @@ def push_event(job_id: str, payload: dict):
 
 
 def _run_scan_thread(job_id: str, target: str, profile: str, output_format: str):
-    """
-    Run the async engine inside a dedicated event loop per thread (safer for gunicorn).
-    Streams progress into SCAN_JOBS[job_id]["events"] for SSE /events/<job_id>.
-    """
     try:
         with SCAN_LOCK:
             if job_id in SCAN_JOBS:
@@ -86,9 +166,7 @@ def _run_scan_thread(job_id: str, target: str, profile: str, output_format: str)
 
         engine = ScannerEngine(target, profile)
 
-        # Progress callback for engine (engine must accept progress_cb=callable or ignore it)
         def progress_cb(evt: dict):
-            # Ensure a safe schema
             evt.setdefault("ts", time.time())
             evt.setdefault("event", "log")
             evt.setdefault("message", "")
@@ -98,7 +176,6 @@ def _run_scan_thread(job_id: str, target: str, profile: str, output_format: str)
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
-            # If engine doesn't support progress_cb, it should ignore unknown kwargs.
             result = loop.run_until_complete(
                 engine.run(output_format=output_format, progress_cb=progress_cb)
             )
@@ -111,7 +188,6 @@ def _run_scan_thread(job_id: str, target: str, profile: str, output_format: str)
                 return
 
             if output_format == "pdf":
-                # engine returns dict that includes pdf_bytes
                 job["pdf_bytes"] = result.get("pdf_bytes")
                 job["result"] = {
                     "message": "PDF generated",
@@ -151,6 +227,27 @@ def _count_severity(findings: list[dict]):
 
 
 # -------------------------
+# Security Headers
+# -------------------------
+
+@app.before_request
+def access_gate():
+    if request.path.startswith("/health"):
+        return
+
+    if not has_access():
+        return ("Not Found", 404)
+    
+@app.after_request
+def add_security_headers(resp):
+    resp.headers["X-Frame-Options"] = "DENY"
+    resp.headers["X-Content-Type-Options"] = "nosniff"
+    resp.headers["Referrer-Policy"] = "no-referrer"
+    resp.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self';"
+    return resp
+
+
+# -------------------------
 # Routes
 # -------------------------
 
@@ -161,10 +258,61 @@ def health():
 
 @app.get("/")
 def home():
-    return render_template("index.html")
+    if is_logged_in():
+        return render_template("index.html", authenticated=True, login_error=None)
+    return render_template("index.html", authenticated=False, login_error=None)
+
+
+@app.post("/login")
+def login_submit():
+    ip = get_client_ip()
+
+    if not check_login_rate_limit(ip):
+        return render_template(
+            "index.html",
+            authenticated=False,
+            login_error="Too many login attempts. Please wait a few seconds and try again."
+        ), 429
+
+    if is_locked_out(ip):
+        remaining = int(_get_login_state(ip)["locked_until"] - time.time())
+        return render_template(
+            "index.html",
+            authenticated=False,
+            login_error=f"Too many failed attempts. Try again in {remaining} seconds."
+        ), 429
+
+    username = (request.form.get("username") or "").strip()
+    password = request.form.get("password") or ""
+
+    expected_user = os.environ.get("APP_USERNAME", "")
+    expected_hash = os.environ.get("APP_PASSWORD_HASH", "")
+
+    time.sleep(0.6)
+
+    if username == expected_user and expected_hash and check_password_hash(expected_hash, password):
+        session.clear()
+        session["authenticated"] = True
+        session["username"] = username
+        clear_login_failures(ip)
+        return redirect(url_for("home"))
+
+    record_failed_login(ip)
+    return render_template(
+        "index.html",
+        authenticated=False,
+        login_error="Invalid username or password."
+    ), 401
+
+
+@app.get("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("home"))
 
 
 @app.post("/scan")
+@login_required
 def start_scan():
     cleanup_jobs()
 
@@ -172,7 +320,11 @@ def start_scan():
     if not check_rate_limit(ip):
         return jsonify({"error": "Too many requests. Please wait."}), 429
 
-    # Read input safely
+    with SCAN_LOCK:
+        running = sum(1 for j in SCAN_JOBS.values() if j.get("status") == "running")
+        if running >= MAX_RUNNING_SCANS:
+            return jsonify({"error": "Server is busy. Please try again later."}), 429
+
     if request.is_json:
         data = request.get_json(silent=True) or {}
     else:
@@ -223,6 +375,7 @@ def start_scan():
 
 
 @app.get("/scan/<job_id>")
+@login_required
 def scan_status(job_id):
     with SCAN_LOCK:
         job = SCAN_JOBS.get(job_id)
@@ -230,7 +383,6 @@ def scan_status(job_id):
         if not job:
             return jsonify({"error": "Job not found"}), 404
 
-        # never return raw bytes or deque in JSON
         safe = {}
         for k, v in job.items():
             if k in ("pdf_bytes",):
@@ -244,11 +396,8 @@ def scan_status(job_id):
 
 
 @app.get("/events/<job_id>")
+@login_required
 def job_events(job_id):
-    """
-    Server-Sent Events feed for live module progress.
-    Frontend: new EventSource(`/events/${jobId}`)
-    """
     with SCAN_LOCK:
         job = SCAN_JOBS.get(job_id)
         if not job:
@@ -256,9 +405,6 @@ def job_events(job_id):
 
     def stream():
         last_sent = 0
-
-        # Critical headers for Render / proxies to not buffer
-        # (these are sent via Response headers below too, but we also keep stream active)
         yield "event: hello\ndata: {}\n\n"
 
         while True:
@@ -271,27 +417,25 @@ def job_events(job_id):
                 events = list(job.get("events", []))
                 status = job.get("status")
 
-            # send new events
             if last_sent < len(events):
                 for evt in events[last_sent:]:
                     yield f"data: {json.dumps(evt)}\n\n"
                 last_sent = len(events)
 
-            # keep-alive ping every loop (prevents some proxies from closing idle stream)
             yield "event: ping\ndata: {}\n\n"
 
-            # end stream when job finishes
             if status in ("completed", "failed"):
                 yield f"event: done\ndata: {json.dumps({'status': status})}\n\n"
                 break
 
     resp = Response(stream(), mimetype="text/event-stream")
     resp.headers["Cache-Control"] = "no-cache"
-    resp.headers["X-Accel-Buffering"] = "no"   # helps with nginx buffering
+    resp.headers["X-Accel-Buffering"] = "no"
     return resp
 
 
 @app.get("/scan/<job_id>/pdf")
+@login_required
 def download_pdf(job_id):
     with SCAN_LOCK:
         job = SCAN_JOBS.get(job_id)
@@ -314,6 +458,7 @@ def download_pdf(job_id):
 
 
 @app.get("/ui/<job_id>")
+@login_required
 def view_results(job_id):
     with SCAN_LOCK:
         job = SCAN_JOBS.get(job_id)
@@ -325,11 +470,9 @@ def view_results(job_id):
         output_format = job.get("output_format")
         result = job.get("result") or {}
 
-    # waiting/failed states still render
     if status not in ("completed", "failed"):
         return render_template("results.html", job=job, issues=[], counts=_count_severity([]))
 
-    # if pdf output, result is wrapped {message,download,meta}
     if output_format == "pdf" and isinstance(result, dict) and "meta" in result:
         meta = result.get("meta") or {}
         findings = meta.get("findings") or []

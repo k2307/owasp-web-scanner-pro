@@ -1,5 +1,12 @@
-Flask
-gunicorn
-aiohttp
-beautifulsoup4
-reportlab
+Flask==3.0.3
+Werkzeug==3.0.3
+gunicorn==22.0.0
+
+aiohttp==3.9.5
+beautifulsoup4==4.12.3
+lxml==5.2.2
+
+reportlab==4.2.0
+
+requests==2.32.3
+tldextract==5.1.2
