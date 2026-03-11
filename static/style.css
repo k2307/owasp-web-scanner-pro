@@ -72,6 +72,12 @@ body:before{
   color:var(--muted);
 }
 
+.muted1{
+  color:var(--muted);
+  align-items:center;
+  justify-content:center;
+}
+
 .small{
   font-size:12px;
 }
