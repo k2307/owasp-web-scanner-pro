@@ -228,6 +228,10 @@ def add_security_headers(resp):
 # Routes
 # -------------------------
 
+@app.get("/health")
+def health():
+    return "OK", 200
+
 @app.get("/")
 def home():
     if is_logged_in():
